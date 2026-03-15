@@ -92,15 +92,15 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
 - [x] 7.6 Export summary `.md` (formatted from JSON)
 - [x] 7.7 Export practice test `.md`
 
-## Phase 8 — AI Skills (Claude API)
-- [ ] 8.1 `claudeService.js`: `runSkill(skillName, paperText, userSettings)`
-- [ ] 8.2 PDF text extraction: `extractText(pdfPath)` using pdf-parse
-- [ ] 8.3 Store extracted text in DB on paper add
-- [ ] 8.4 Mind map skill: returns Markmap Markdown bullet list
-- [ ] 8.5 Summary skill: returns structured JSON
-- [ ] 8.6 Flashcard skill: returns Markdown with sections per card
-- [ ] 8.7 Practice test skill: returns Markdown with MCQ + short answer + answer key
-- [ ] 8.8 Handle large papers (>80k tokens): truncate with warning
+## Phase 8 — AI Skills (Claude API) ✅ COMPLETE
+- [x] 8.1 `claudeService.js`: `runSkill(db, skillKey, rawText)`
+- [x] 8.2 PDF text extraction: done in Phase 1 (pdf-parse on papers:add)
+- [x] 8.3 Store extracted text in DB on paper add: done in Phase 1
+- [x] 8.4 Mind map skill: saves Markmap Markdown to mindmaps/, updates mindmap_path
+- [x] 8.5 Summary skill: extracts JSON, stores in papers.summary column
+- [x] 8.6 Flashcard skill: saves Markdown to flashcards/, updates flashcards_path
+- [x] 8.7 Practice test skill: saves Markdown to tests/, updates test_path
+- [x] 8.8 Handle large papers (>75k tokens): truncate at 300k chars with toast warning
 
 ## Phase 9 — Installer
 - [ ] 9.1 Configure electron-builder: NSIS (Win), DMG (Mac), AppImage (Linux)

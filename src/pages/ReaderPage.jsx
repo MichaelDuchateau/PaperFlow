@@ -93,15 +93,16 @@ export default function ReaderPage() {
     showToast('info', `Generating ${skill}…`);
     try {
       const result = await window.api.ai[skill](id);
-      if (result?.status === 'stub') {
-        showToast('info', 'AI not configured yet — add your API key in Settings (Phase 8).');
+      await refreshPaper();
+      if (skill === 'mindmap') setLeftTab('mindmap');
+      const label = skill.charAt(0).toUpperCase() + skill.slice(1);
+      if (result?.truncated) {
+        showToast('info', `${label} generated (paper was truncated — very large PDF).`);
       } else {
-        await refreshPaper();
-        if (skill === 'mindmap') setLeftTab('mindmap');
-        showToast('success', `${skill.charAt(0).toUpperCase() + skill.slice(1)} generated!`);
+        showToast('success', `${label} generated!`);
       }
     } catch (err) {
-      showToast('error', `Generation failed: ${err.message}`);
+      showToast('error', err.message);
     } finally {
       setGenerating(prev => ({ ...prev, [skill]: false }));
     }

@@ -3,7 +3,7 @@
 ---
 
 ## Current Status
-**Phase:** Phase 8 — AI Skills
+**Phase:** Phase 9 — Installer
 **Last updated:** 2026-03-15
 
 ---
@@ -111,6 +111,15 @@
 **Next session should start with:**
 - Phase 8: AI Skills (real Claude API integration in claudeService.js)
 
+### Session 8 — 2026-03-15 (Phase 8 complete)
+**Done:**
+- `electron/claudeService.js` — `runSkill(db, skillKey, rawText)`: reads API key via safeStorage; reads per-skill config (enabled, max_tokens, temperature, prompt) from settings DB with fallback to hardcoded defaults; lazy-requires `@anthropic-ai/sdk`; truncates at 300k chars (~75k tokens) with `truncated` flag; `stripCodeFence()` to clean model output; `extractJson()` to robustly parse summary JSON (handles prose wrapping + code fences); uses `claude-sonnet-4-6`
+- `electron/main.js` — replaced 4 AI stubs with real handlers: mindmap saves to `mindmaps/mindmap_<id>.md` + updates `mindmap_path`; summary stores clean JSON in `papers.summary`; flashcards saves to `flashcards/flashcards_<id>.md`; test saves to `tests/test_<id>.md`
+- `src/pages/ReaderPage.jsx` — removed stub check; shows truncation warning toast; error message uses `err.message` directly for clear user-facing errors (e.g. "No API key configured")
+
+**Next session should start with:**
+- Phase 9: Installer (electron-builder DMG/NSIS/AppImage)
+
 ---
 
 ## Phase Completion Tracker
@@ -124,7 +133,7 @@
 | Phase 5 — Settings | ✅ Complete | |
 | Phase 6 — Flashcard UI | ✅ Complete | |
 | Phase 7 — Export service | ✅ Complete | |
-| Phase 8 — AI skills | ⬜ Not started | Mock first, real API after Phase 3 |
+| Phase 8 — AI skills | ✅ Complete | claude-sonnet-4-6, all 4 skills |
 | Phase 9 — Installer | ⬜ Not started | Last |
 
 ---

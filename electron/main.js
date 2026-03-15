@@ -299,11 +299,59 @@ function registerIpcHandlers() {
     return fs.readFileSync(abs, 'utf8');
   });
 
-  // ── AI stubs — Phase 8 fills these in ────────────────────────────
-  ipcMain.handle('ai:mindmap',    async (_, paperId) => ({ status: 'stub', paperId }));
-  ipcMain.handle('ai:summary',    async (_, paperId) => ({ status: 'stub', paperId }));
-  ipcMain.handle('ai:flashcards', async (_, paperId) => ({ status: 'stub', paperId }));
-  ipcMain.handle('ai:test',       async (_, paperId) => ({ status: 'stub', paperId }));
+  // ── AI skills ─────────────────────────────────────────────────────
+  const claudeService = require('./claudeService.js');
+
+  ipcMain.handle('ai:mindmap', async (_, paperId) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) throw new Error('Paper not found');
+
+    const { content, truncated } = await claudeService.runSkill(db, 'mindmap', paper.raw_text);
+
+    const relPath = `mindmaps/mindmap_${paperId}.md`;
+    fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
+    db.prepare('UPDATE papers SET mindmap_path = ? WHERE id = ?').run(relPath, paperId);
+
+    return { status: 'ok', truncated };
+  });
+
+  ipcMain.handle('ai:summary', async (_, paperId) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) throw new Error('Paper not found');
+
+    const { content, truncated } = await claudeService.runSkill(db, 'summary', paper.raw_text);
+
+    // content is already clean-stringified JSON
+    db.prepare('UPDATE papers SET summary = ? WHERE id = ?').run(content, paperId);
+
+    return { status: 'ok', truncated };
+  });
+
+  ipcMain.handle('ai:flashcards', async (_, paperId) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) throw new Error('Paper not found');
+
+    const { content, truncated } = await claudeService.runSkill(db, 'flashcards', paper.raw_text);
+
+    const relPath = `flashcards/flashcards_${paperId}.md`;
+    fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
+    db.prepare('UPDATE papers SET flashcards_path = ? WHERE id = ?').run(relPath, paperId);
+
+    return { status: 'ok', truncated };
+  });
+
+  ipcMain.handle('ai:test', async (_, paperId) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) throw new Error('Paper not found');
+
+    const { content, truncated } = await claudeService.runSkill(db, 'test', paper.raw_text);
+
+    const relPath = `tests/test_${paperId}.md`;
+    fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
+    db.prepare('UPDATE papers SET test_path = ? WHERE id = ?').run(relPath, paperId);
+
+    return { status: 'ok', truncated };
+  });
 
   // ── Export helpers ────────────────────────────────────────────────
   function safeTitle(paper) {
