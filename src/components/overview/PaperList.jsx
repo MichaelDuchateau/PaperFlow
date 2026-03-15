@@ -27,7 +27,7 @@ function ActionIcon({ title, active, onClick, children }) {
 }
 
 // ── Download dropdown ──────────────────────────────────────────────
-function DownloadMenu({ paper }) {
+function DownloadMenu({ paper, onToast }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -37,33 +37,72 @@ function DownloadMenu({ paper }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const run = async (label, fn) => {
+    setOpen(false);
+    try {
+      const result = await fn();
+      if (result?.canceled) return;
+      if (result?.error) { onToast?.('error', result.error); return; }
+      if (result?.success) onToast?.('success', `${label} exported`);
+    } catch (err) {
+      onToast?.('error', `Export failed: ${err.message}`);
+    }
+  };
+
   const items = [
-    { label: 'Note (.md)',       enabled: !!paper.notes_path,      fn: () => window.api.export.note(paper.id) },
-    { label: 'Flashcards (.md)', enabled: !!paper.flashcards_path, fn: () => window.api.export.flashcards(paper.id) },
-    { label: 'Anki (.txt)',      enabled: !!paper.flashcards_path, fn: () => window.api.export.anki(paper.id) },
-    { label: 'Mind map (.md)',   enabled: !!paper.mindmap_path,    fn: () => window.api.export.mindmap(paper.id) },
+    {
+      label: 'Note (.md)',
+      enabled: !!paper.notes_path,
+      fn: () => run('Note', () => window.api.export.note(paper.id)),
+    },
+    {
+      label: 'Summary (.md)',
+      enabled: !!paper.summary,
+      fn: () => run('Summary', () => window.api.export.summary(paper.id)),
+    },
+    {
+      label: 'Flashcards (.md)',
+      enabled: !!paper.flashcards_path,
+      fn: () => run('Flashcards', () => window.api.export.flashcards(paper.id)),
+    },
+    {
+      label: 'Anki (.txt)',
+      enabled: !!paper.flashcards_path,
+      fn: () => run('Anki deck', () => window.api.export.anki(paper.id)),
+    },
+    {
+      label: 'Mind map (.md)',
+      enabled: !!paper.mindmap_path,
+      fn: () => run('Mind map', () => window.api.export.mindmap(paper.id)),
+    },
+    {
+      label: 'Practice test (.md)',
+      enabled: !!paper.test_path,
+      fn: () => run('Practice test', () => window.api.export.test(paper.id)),
+    },
   ];
+
+  const hasAny = items.some(i => i.enabled);
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
         title="Export"
-        className="p-1 rounded text-gray-600 hover:text-gray-400 transition-colors"
+        className={`p-1 rounded transition-colors ${hasAny ? 'text-gray-600 hover:text-gray-400' : 'text-gray-800 cursor-default'}`}
       >
-        {/* Download icon */}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 bottom-7 z-20 w-44 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1">
+        <div className="absolute right-0 bottom-7 z-20 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1">
           {items.map(item => (
             <button
               key={item.label}
               disabled={!item.enabled}
-              onClick={() => { item.fn(); setOpen(false); }}
+              onClick={item.fn}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                 item.enabled
                   ? 'text-gray-300 hover:bg-gray-700 hover:text-white'
@@ -80,7 +119,7 @@ function DownloadMenu({ paper }) {
 }
 
 // ── Row ────────────────────────────────────────────────────────────
-function PaperRow({ paper, tags, onStatusChange, onDelete }) {
+function PaperRow({ paper, tags, onStatusChange, onDelete, onToast }) {
   const navigate = useNavigate();
   const status   = STATUS_CONFIG[paper.status] ?? STATUS_CONFIG.unread;
   const summary  = React.useMemo(() => {
@@ -171,7 +210,7 @@ function PaperRow({ paper, tags, onStatusChange, onDelete }) {
       {/* Download + delete */}
       <td className="pr-4 py-3 w-16">
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <DownloadMenu paper={paper} />
+          <DownloadMenu paper={paper} onToast={onToast} />
           <button
             onClick={() => onDelete(paper.id, paper.title)}
             title="Delete paper"
@@ -189,7 +228,7 @@ function PaperRow({ paper, tags, onStatusChange, onDelete }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────
-export default function PaperList({ papers, tags, onStatusChange, onDelete, loading }) {
+export default function PaperList({ papers, tags, onStatusChange, onDelete, onToast, loading }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">
@@ -230,6 +269,7 @@ export default function PaperList({ papers, tags, onStatusChange, onDelete, load
               tags={tags}
               onStatusChange={onStatusChange}
               onDelete={onDelete}
+              onToast={onToast}
             />
           ))}
         </tbody>

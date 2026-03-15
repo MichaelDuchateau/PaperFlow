@@ -63,6 +63,8 @@ contextBridge.exposeInMainWorld('api', {
     flashcards: (paperId) => ipcRenderer.invoke('export:flashcards', { paperId }),
     anki:       (paperId) => ipcRenderer.invoke('export:anki',       { paperId }),
     mindmap:    (paperId) => ipcRenderer.invoke('export:mindmap',    { paperId }),
+    test:       (paperId) => ipcRenderer.invoke('export:test',       { paperId }),
+    summary:    (paperId) => ipcRenderer.invoke('export:summary',    { paperId }),
   },
 
   dialog: {

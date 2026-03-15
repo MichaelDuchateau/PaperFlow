@@ -3,7 +3,7 @@
 ---
 
 ## Current Status
-**Phase:** Phase 7 — Export Service
+**Phase:** Phase 8 — AI Skills
 **Last updated:** 2026-03-15
 
 ---
@@ -101,6 +101,16 @@
 **Next session should start with:**
 - Phase 7: Export Service (note, flashcards, mindmap .md exports — already have stubs, need full implementations)
 
+### Session 7 — 2026-03-15 (Phase 7 complete)
+**Done:**
+- `electron/main.js` — `safeTitle()` + `copyExport()` helpers; improved `export:note/flashcards/mindmap` (use paper title in filename, return `{ error }` when missing); added `export:test` (copies test_path); added `export:summary` (formats JSON summary as Markdown doc with sections)
+- `electron/preload.js` — exposed `export.test`, `export.summary`
+- `src/components/overview/PaperList.jsx` — DownloadMenu expanded to 6 items (note, summary, flashcards, anki, mindmap, test); `run()` wrapper calls API + calls `onToast` on success/error; `onToast` prop threaded through PaperList → PaperRow → DownloadMenu
+- `src/pages/OverviewPage.jsx` — passes `showToast` as `onToast` to PaperList
+
+**Next session should start with:**
+- Phase 8: AI Skills (real Claude API integration in claudeService.js)
+
 ---
 
 ## Phase Completion Tracker
@@ -113,7 +123,7 @@
 | Phase 4 — Pomodoro | ✅ Complete | |
 | Phase 5 — Settings | ✅ Complete | |
 | Phase 6 — Flashcard UI | ✅ Complete | |
-| Phase 7 — Export service | ⬜ Not started | |
+| Phase 7 — Export service | ✅ Complete | |
 | Phase 8 — AI skills | ⬜ Not started | Mock first, real API after Phase 3 |
 | Phase 9 — Installer | ⬜ Not started | Last |
 

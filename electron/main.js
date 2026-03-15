@@ -305,33 +305,42 @@ function registerIpcHandlers() {
   ipcMain.handle('ai:flashcards', async (_, paperId) => ({ status: 'stub', paperId }));
   ipcMain.handle('ai:test',       async (_, paperId) => ({ status: 'stub', paperId }));
 
-  // ── Export — Phase 7 fills these in ──────────────────────────────
+  // ── Export helpers ────────────────────────────────────────────────
+  function safeTitle(paper) {
+    return (paper?.title || 'export').replace(/[^a-zA-Z0-9_\-. ]/g, '_').trim().replace(/\s+/g, '_').slice(0, 60);
+  }
+
+  function copyExport(srcRel, destPath) {
+    if (!srcRel) return false;
+    const src = path.join(DATA_DIR, srcRel);
+    if (!fs.existsSync(src)) return false;
+    fs.copyFileSync(src, destPath);
+    return true;
+  }
+
+  // ── Export handlers ───────────────────────────────────────────────
   ipcMain.handle('export:note', async (_, { paperId }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.notes_path) return { error: 'No notes for this paper' };
     const res = await dialog.showSaveDialog({
-      defaultPath: `note_${paperId}.md`,
+      defaultPath: `${safeTitle(paper)}_notes.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (res.canceled) return { canceled: true };
-    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
-    if (paper?.notes_path) {
-      const src = path.join(DATA_DIR, paper.notes_path);
-      if (fs.existsSync(src)) fs.copyFileSync(src, res.filePath);
-    }
-    return { success: true, filePath: res.filePath };
+    const ok = copyExport(paper.notes_path, res.filePath);
+    return ok ? { success: true } : { error: 'Notes file not found on disk' };
   });
 
   ipcMain.handle('export:flashcards', async (_, { paperId }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.flashcards_path) return { error: 'No flashcards for this paper' };
     const res = await dialog.showSaveDialog({
-      defaultPath: `flashcards_${paperId}.md`,
+      defaultPath: `${safeTitle(paper)}_flashcards.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (res.canceled) return { canceled: true };
-    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
-    if (paper?.flashcards_path) {
-      const src = path.join(DATA_DIR, paper.flashcards_path);
-      if (fs.existsSync(src)) fs.copyFileSync(src, res.filePath);
-    }
-    return { success: true };
+    const ok = copyExport(paper.flashcards_path, res.filePath);
+    return ok ? { success: true } : { error: 'Flashcards file not found on disk' };
   });
 
   ipcMain.handle('export:anki', async (_, { paperId }) => {
@@ -364,16 +373,68 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('export:mindmap', async (_, { paperId }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.mindmap_path) return { error: 'No mind map for this paper' };
     const res = await dialog.showSaveDialog({
-      defaultPath: `mindmap_${paperId}.md`,
+      defaultPath: `${safeTitle(paper)}_mindmap.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (res.canceled) return { canceled: true };
+    const ok = copyExport(paper.mindmap_path, res.filePath);
+    return ok ? { success: true } : { error: 'Mind map file not found on disk' };
+  });
+
+  ipcMain.handle('export:test', async (_, { paperId }) => {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
-    if (paper?.mindmap_path) {
-      const src = path.join(DATA_DIR, paper.mindmap_path);
-      if (fs.existsSync(src)) fs.copyFileSync(src, res.filePath);
-    }
+    if (!paper?.test_path) return { error: 'No practice test for this paper' };
+    const res = await dialog.showSaveDialog({
+      defaultPath: `${safeTitle(paper)}_test.md`,
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+    });
+    if (res.canceled) return { canceled: true };
+    const ok = copyExport(paper.test_path, res.filePath);
+    return ok ? { success: true } : { error: 'Test file not found on disk' };
+  });
+
+  ipcMain.handle('export:summary', async (_, { paperId }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.summary) return { error: 'No summary for this paper' };
+
+    let s = {};
+    try { s = JSON.parse(paper.summary); } catch { /* */ }
+
+    const authors = Array.isArray(s.authors) ? s.authors.join(', ') : (s.authors || '');
+    const keywords = Array.isArray(s.keywords) ? s.keywords.map(k => `\`${k}\``).join(', ') : '';
+
+    const md = [
+      `# ${s.title || paper.title}`,
+      '',
+      `**Authors:** ${authors || '—'}`,
+      `**Year:** ${s.year || '—'}`,
+      `**Journal:** ${s.journal || '—'}`,
+      '',
+      '## Objective',
+      s.objective || '—',
+      '',
+      '## Methods',
+      s.methods || '—',
+      '',
+      '## Results',
+      s.results || '—',
+      '',
+      '## Conclusions',
+      s.conclusions || '—',
+      '',
+      '## Keywords',
+      keywords || '—',
+    ].join('\n');
+
+    const res = await dialog.showSaveDialog({
+      defaultPath: `${safeTitle(paper)}_summary.md`,
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+    });
+    if (res.canceled) return { canceled: true };
+    fs.writeFileSync(res.filePath, md, 'utf8');
     return { success: true };
   });
 

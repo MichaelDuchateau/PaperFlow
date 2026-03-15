@@ -83,12 +83,14 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
 - [x] 6.4 Progress indicator: Card X of N
 - [x] 6.5 Export button → `window.api.export.exportAnki(id)`
 
-## Phase 7 — Export Service
-- [ ] 7.1 Export note `.md` file
-- [ ] 7.2 Export flashcards `.md` file
-- [ ] 7.3 Export Anki tab-separated `.txt`
-- [ ] 7.4 Export mind map `.md` file
-- [ ] 7.5 All exports triggered from Overview page download icons
+## Phase 7 — Export Service ✅ COMPLETE
+- [x] 7.1 Export note `.md` file
+- [x] 7.2 Export flashcards `.md` file
+- [x] 7.3 Export Anki tab-separated `.txt`
+- [x] 7.4 Export mind map `.md` file
+- [x] 7.5 All exports triggered from Overview page download icons
+- [x] 7.6 Export summary `.md` (formatted from JSON)
+- [x] 7.7 Export practice test `.md`
 
 ## Phase 8 — AI Skills (Claude API)
 - [ ] 8.1 `claudeService.js`: `runSkill(skillName, paperText, userSettings)`

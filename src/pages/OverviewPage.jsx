@@ -150,6 +150,7 @@ export default function OverviewPage() {
           tags={tags}
           onStatusChange={handleStatusChange}
           onDelete={handleDelete}
+          onToast={showToast}
           loading={loading}
         />
       </div>
