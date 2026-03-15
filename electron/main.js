@@ -248,6 +248,14 @@ function registerIpcHandlers() {
     return items;
   });
 
+  ipcMain.handle('flashcards:get', (_, paperId) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.flashcards_path) return null;
+    const abs = path.join(DATA_DIR, paper.flashcards_path);
+    if (!fs.existsSync(abs)) return null;
+    return fs.readFileSync(abs, 'utf8');
+  });
+
   ipcMain.handle('notes:get', (_, paperId) => {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.notes_path) return null;
@@ -327,13 +335,32 @@ function registerIpcHandlers() {
   });
 
   ipcMain.handle('export:anki', async (_, { paperId }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper?.flashcards_path) return { error: 'No flashcards for this paper' };
+    const abs = path.join(DATA_DIR, paper.flashcards_path);
+    if (!fs.existsSync(abs)) return { error: 'Flashcard file not found' };
+
+    const content = fs.readFileSync(abs, 'utf8');
+    // Parse "## Card N\n**Q:** ...\n**A:** ..." blocks
+    const cardBlocks = content.split(/^##\s+Card\s+\d+/m).filter(Boolean);
+    const lines = [];
+    for (const block of cardBlocks) {
+      const qMatch = block.match(/\*\*Q:\*\*\s*(.+)/);
+      const aMatch = block.match(/\*\*A:\*\*\s*(.+)/);
+      if (qMatch && aMatch) {
+        const q = qMatch[1].trim().replace(/\t/g, ' ');
+        const a = aMatch[1].trim().replace(/\t/g, ' ');
+        lines.push(`${q}\t${a}`);
+      }
+    }
+
     const res = await dialog.showSaveDialog({
-      defaultPath: `anki_${paperId}.txt`,
-      filters: [{ name: 'Text', extensions: ['txt'] }],
+      defaultPath: `anki_${paper.title?.replace(/[^a-z0-9]/gi, '_') ?? paperId}.txt`,
+      filters: [{ name: 'Anki tab-separated', extensions: ['txt'] }],
     });
     if (res.canceled) return { canceled: true };
-    // Full Anki export in Phase 7
-    return { success: true };
+    fs.writeFileSync(res.filePath, lines.join('\n'), 'utf8');
+    return { success: true, cardCount: lines.length };
   });
 
   ipcMain.handle('export:mindmap', async (_, { paperId }) => {

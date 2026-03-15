@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('api', {
     stats: ()        => ipcRenderer.invoke('pomodoro:stats'),
   },
 
+  flashcards: {
+    get: (paperId) => ipcRenderer.invoke('flashcards:get', paperId),
+  },
+
   notes: {
     get:        (paperId)          => ipcRenderer.invoke('notes:get', paperId),
     save:       (paperId, content) => ipcRenderer.invoke('notes:save', { paperId, content }),

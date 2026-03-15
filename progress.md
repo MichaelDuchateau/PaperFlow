@@ -3,7 +3,7 @@
 ---
 
 ## Current Status
-**Phase:** Phase 6 — Flashcard UI
+**Phase:** Phase 7 — Export Service
 **Last updated:** 2026-03-15
 
 ---
@@ -87,6 +87,20 @@
 **Next session should start with:**
 - Phase 6: Flashcard UI (`FlashcardReviewer` component)
 
+### Session 6 — 2026-03-15 (Phase 6 complete)
+**Done:**
+- `electron/main.js` — added `flashcards:get` IPC handler; implemented real Anki tab-separated export in `export:anki` (parses `**Q:**`/`**A:**` blocks, writes TSV)
+- `electron/preload.js` — exposed `window.api.flashcards.get`
+- `src/App.jsx` — added `/flashcards/:id` route
+- `src/components/flashcards/FlashcardReviewer.jsx` — `parseFlashcards()` parser; `FlipCard` with CSS 3D rotateY animation; confidence buttons (Again/Hard/Good/Easy, shortcuts 1–4); progress bar; "Again" re-queues card at end; `DoneScreen` with rating breakdown + restart/export; Space/Enter/Arrow keyboard shortcuts
+- `src/pages/FlashcardsPage.jsx` — loads paper + flashcards, empty state, back to reader, Export to Anki button, toast
+- `src/components/overview/PaperList.jsx` — flashcard icon now navigates to `/flashcards/:id`; mindmap icon navigates to `/reader/:id?tab=mindmap`
+- `src/pages/ReaderPage.jsx` — handles `?tab=mindmap` URL param to switch left panel tab
+- `src/components/reader/AIActionBar.jsx` — added "Review flashcards" quick-access button when flashcards exist
+
+**Next session should start with:**
+- Phase 7: Export Service (note, flashcards, mindmap .md exports — already have stubs, need full implementations)
+
 ---
 
 ## Phase Completion Tracker
@@ -98,7 +112,7 @@
 | Phase 3 — Reader page | ✅ Complete | |
 | Phase 4 — Pomodoro | ✅ Complete | |
 | Phase 5 — Settings | ✅ Complete | |
-| Phase 6 — Flashcard UI | ⬜ Not started | |
+| Phase 6 — Flashcard UI | ✅ Complete | |
 | Phase 7 — Export service | ⬜ Not started | |
 | Phase 8 — AI skills | ⬜ Not started | Mock first, real API after Phase 3 |
 | Phase 9 — Installer | ⬜ Not started | Last |

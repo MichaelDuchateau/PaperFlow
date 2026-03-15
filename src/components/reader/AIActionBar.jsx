@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const SKILLS = [
   { key: 'mindmap',    label: 'Mind Map',   icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m6 16l-6 3V7l6-3v16z' },
@@ -17,6 +18,7 @@ function Spinner() {
 }
 
 export default function AIActionBar({ paper, generating = {}, onGenerate }) {
+  const navigate = useNavigate();
   const anyGenerating = Object.values(generating).some(Boolean);
 
   return (
@@ -64,11 +66,18 @@ export default function AIActionBar({ paper, generating = {}, onGenerate }) {
         );
       })}
 
-      {/* API key hint */}
-      {!paper?.raw_text && (
-        <span className="ml-auto text-xs text-gray-700">
-          Set API key in Settings to enable AI
-        </span>
+      {/* Quick-access: review flashcards */}
+      {paper?.flashcards_path && (
+        <button
+          onClick={() => navigate(`/flashcards/${paper.id}`)}
+          className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-emerald-900/30 border border-emerald-700/50 text-emerald-400 hover:bg-emerald-900/50 transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Review flashcards
+        </button>
       )}
     </div>
   );

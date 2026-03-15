@@ -76,12 +76,12 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
   - [x] Per-skill: enable/disable, system prompt editor, max tokens, temperature
 - [x] 5.6 Goals section: daily pomodoro goal, weekly paper goal
 
-## Phase 6 — Flashcard UI
-- [ ] 6.1 `FlashcardReviewer` component (parse `flashcards_<id>.md`)
-- [ ] 6.2 Single card display with flip on click/spacebar
-- [ ] 6.3 Confidence buttons: Again / Hard / Good / Easy
-- [ ] 6.4 Progress indicator: Card X of N
-- [ ] 6.5 Export button → `window.api.export.exportAnki(id)`
+## Phase 6 — Flashcard UI ✅ COMPLETE
+- [x] 6.1 `FlashcardReviewer` component (parse `flashcards_<id>.md`)
+- [x] 6.2 Single card display with flip on click/spacebar
+- [x] 6.3 Confidence buttons: Again / Hard / Good / Easy
+- [x] 6.4 Progress indicator: Card X of N
+- [x] 6.5 Export button → `window.api.export.exportAnki(id)`
 
 ## Phase 7 — Export Service
 - [ ] 7.1 Export note `.md` file

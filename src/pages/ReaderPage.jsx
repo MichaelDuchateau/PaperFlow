@@ -63,7 +63,8 @@ export default function ReaderPage() {
     ]).then(([p, s]) => {
       setPaper(p);
       setSettings(s ?? {});
-      // If URL says ?panel=notes, ensure we can see the notes pane (it's always visible)
+      // ?tab=mindmap switches the left panel tab
+      if (searchParams.get('tab') === 'mindmap') setLeftTab('mindmap');
     });
   }, [id]);
 
