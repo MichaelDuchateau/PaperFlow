@@ -2,12 +2,17 @@
   "name": "paperflow",
   "version": "1.0.0",
   "description": "Local-first academic paper reading app",
+  "author": "PaperFlow",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && env -u ELECTRON_RUN_AS_NODE electron .\"",
     "build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:win": "vite build && electron-builder --win",
+    "build:linux": "vite build && electron-builder --linux",
     "preview": "vite preview",
-    "rebuild-native": "electron-rebuild -f -w better-sqlite3"
+    "rebuild-native": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
@@ -43,24 +48,62 @@
   "build": {
     "appId": "com.paperflow.app",
     "productName": "PaperFlow",
+    "copyright": "Copyright © 2025 PaperFlow",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
-    "mac": {
-      "target": "dmg",
-      "category": "public.app-category.education"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    },
+
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
     ],
-    "npmRebuild": true
+
+    "asarUnpack": [
+      "**/*.node",
+      "**/pdf-parse/**",
+      "**/bindings/**",
+      "**/file-uri-to-path/**"
+    ],
+
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] }
+      ],
+      "category": "public.app-category.education",
+      "icon": "build/icon.icns",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+
+    "dmg": {
+      "title": "${productName} ${version}",
+      "sign": false
+    },
+
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PaperFlow"
+    },
+
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icons",
+      "category": "Education"
+    },
+
+    "npmRebuild": true,
+    "publish": null
   }
 }

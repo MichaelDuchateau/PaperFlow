@@ -3,7 +3,7 @@
 ---
 
 ## Current Status
-**Phase:** Phase 9 — Installer
+**Phase:** Complete ✅
 **Last updated:** 2026-03-15
 
 ---
@@ -120,6 +120,16 @@
 **Next session should start with:**
 - Phase 9: Installer (electron-builder DMG/NSIS/AppImage)
 
+### Session 9 — 2026-03-15 (Phase 9 complete — ALL PHASES DONE)
+**Done:**
+- `package.json` — added `author`, `postinstall` script; `build:mac/win/linux` scripts; full electron-builder config: `asarUnpack` for `**/*.node` + `pdf-parse` + `bindings`; Mac universal (arm64+x64) DMG; NSIS config (custom install dir, desktop + start menu shortcuts); AppImage for Linux; `publish: null`
+- `build/icon.icns` — generated from 512x512 PNG via iconutil (macOS)
+- `build/icon.png` — 512×512 Linux icon
+- `build/icons/*.png` — 7 sizes (16–512px) for Linux AppImage
+- `build/entitlements.mac.plist` — file-access + JIT entitlements
+- `README.md` — full documentation: features, tech stack, prerequisites, dev setup, API key config, build instructions, icon guide, data paths, keyboard shortcuts, known limitations
+- **Build test**: `PaperFlow-1.0.0-arm64.dmg` and `PaperFlow-1.0.0.dmg` both built successfully
+
 ---
 
 ## Phase Completion Tracker
@@ -134,7 +144,7 @@
 | Phase 6 — Flashcard UI | ✅ Complete | |
 | Phase 7 — Export service | ✅ Complete | |
 | Phase 8 — AI skills | ✅ Complete | claude-sonnet-4-6, all 4 skills |
-| Phase 9 — Installer | ⬜ Not started | Last |
+| Phase 9 — Installer | ✅ Complete | DMG arm64+x64 verified |
 
 ---
 

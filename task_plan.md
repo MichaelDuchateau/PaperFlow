@@ -102,10 +102,10 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
 - [x] 8.7 Practice test skill: saves Markdown to tests/, updates test_path
 - [x] 8.8 Handle large papers (>75k tokens): truncate at 300k chars with toast warning
 
-## Phase 9 — Installer
-- [ ] 9.1 Configure electron-builder: NSIS (Win), DMG (Mac), AppImage (Linux)
-- [ ] 9.2 Test build on dev machine
-- [ ] 9.3 Write install instructions in README
+## Phase 9 — Installer ✅ COMPLETE
+- [x] 9.1 Configure electron-builder: NSIS (Win), DMG (Mac arm64+x64), AppImage (Linux)
+- [x] 9.2 Test build on dev machine — both arm64 + x64 DMGs built successfully
+- [x] 9.3 Write install instructions in README
 
 ---
 
