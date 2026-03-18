@@ -27,9 +27,14 @@ function TagPicker({ paperTagIds = [], allTags = [], onChange }) {
       ))}
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-5 h-5 flex items-center justify-center rounded-full border border-dashed border-gray-600 text-gray-500 hover:text-gray-300 hover:border-gray-400 text-xs transition-colors flex-shrink-0"
+        className="w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0"
         title="Add tag"
-      >+</button>
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M7 7h.01M3 3h8l9 9a2 2 0 010 2.828l-5.172 5.172a2 2 0 01-2.828 0L3 11V3z" />
+        </svg>
+      </button>
       {open && available.length > 0 && (
         <div className="absolute left-0 top-7 z-40 min-w-[140px] bg-gray-900 border border-gray-700 rounded-lg shadow-xl py-1 space-y-0.5">
           {available.map(t => (
