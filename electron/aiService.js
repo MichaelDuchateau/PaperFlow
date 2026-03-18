@@ -147,12 +147,12 @@ function extractJson(text) {
 
 // ── Ollama caller ────────────────────────────────────────────────────
 
-function callOllama(ollamaUrl, model, systemPrompt, userText, config) {
+function callOllama(ollamaUrl, model, systemPrompt, userText, config, forceJson = false) {
   return new Promise((resolve, reject) => {
     const http   = require('http');
     const https  = require('https');
     const url    = new URL('/api/chat', ollamaUrl);
-    const body   = JSON.stringify({
+    const payload = {
       model,
       stream: false,
       messages: [
@@ -162,8 +162,13 @@ function callOllama(ollamaUrl, model, systemPrompt, userText, config) {
       options: {
         temperature: config.temperature,
         num_predict: config.maxTokens,
+        // Disable thinking mode for Qwen3 and similar reasoning models
+        think: false,
       },
-    });
+    };
+    // Force structured JSON output at the API level (overrides model behaviour)
+    if (forceJson) payload.format = 'json';
+    const body = JSON.stringify(payload);
 
     const transport = url.protocol === 'https:' ? https : http;
     const req = transport.request({
@@ -237,7 +242,8 @@ async function runSkill(db, skillKey, rawText) {
       model,
       config.prompt,
       `Here is the academic paper text:\n\n${text}`,
-      config
+      config,
+      skillKey === 'summary'  // force JSON output for summary skill
     );
   } else {
     // Claude path
