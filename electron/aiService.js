@@ -119,6 +119,11 @@ function getSkillConfig(db, skillKey) {
   };
 }
 
+// Strip <think>...</think> blocks emitted by reasoning models (e.g. Qwen3, DeepSeek-R1)
+function stripThinkingBlocks(text) {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 // Strip wrapping code fences that some models insert despite instructions
 function stripCodeFence(text) {
   return text
@@ -127,14 +132,15 @@ function stripCodeFence(text) {
     .trim();
 }
 
-// Robustly extract JSON from a response that may contain prose or code fences
+// Robustly extract JSON from a response that may contain prose, think blocks, or code fences
 function extractJson(text) {
-  const stripped = stripCodeFence(text);
-  try { return JSON.parse(stripped); } catch { /* */ }
-  const start = text.indexOf('{');
-  const end   = text.lastIndexOf('}');
+  const clean   = stripCodeFence(stripThinkingBlocks(text));
+  try { return JSON.parse(clean); } catch { /* */ }
+  // Fall back to finding the outermost {...} in the cleaned text
+  const start = clean.indexOf('{');
+  const end   = clean.lastIndexOf('}');
   if (start !== -1 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)); } catch { /* */ }
+    try { return JSON.parse(clean.slice(start, end + 1)); } catch { /* */ }
   }
   throw new Error('Could not parse JSON from model response');
 }
@@ -258,8 +264,8 @@ async function runSkill(db, skillKey, rawText) {
     return { content: JSON.stringify(parsed), truncated };
   }
 
-  // For all other skills, strip accidental code fences and return the text
-  return { content: stripCodeFence(raw), truncated };
+  // For all other skills, strip thinking blocks + accidental code fences
+  return { content: stripCodeFence(stripThinkingBlocks(raw)), truncated };
 }
 
 module.exports = { runSkill };
