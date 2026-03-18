@@ -430,10 +430,11 @@ function registerIpcHandlers() {
   }
 
   // ── Export handlers ───────────────────────────────────────────────
-  ipcMain.handle('export:note', async (_, { paperId }) => {
+  ipcMain.handle('export:note', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.notes_path) return { error: 'No notes for this paper yet — open the reader and write some notes first.' };
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `${safeTitle(paper)}_notes.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
@@ -442,10 +443,11 @@ function registerIpcHandlers() {
     return ok ? { success: true } : { error: `Notes file not found at ${path.join(DATA_DIR, paper.notes_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
-  ipcMain.handle('export:flashcards', async (_, { paperId }) => {
+  ipcMain.handle('export:flashcards', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.flashcards_path) return { error: 'No flashcards for this paper yet — generate them first via the AI action bar.' };
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `${safeTitle(paper)}_flashcards.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
@@ -454,7 +456,8 @@ function registerIpcHandlers() {
     return ok ? { success: true } : { error: `Flashcards file not found at ${path.join(DATA_DIR, paper.flashcards_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
-  ipcMain.handle('export:anki', async (_, { paperId }) => {
+  ipcMain.handle('export:anki', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.flashcards_path) return { error: 'No flashcards for this paper' };
     const abs = path.join(DATA_DIR, paper.flashcards_path);
@@ -474,7 +477,7 @@ function registerIpcHandlers() {
       }
     }
 
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `anki_${paper.title?.replace(/[^a-z0-9]/gi, '_') ?? paperId}.txt`,
       filters: [{ name: 'Anki tab-separated', extensions: ['txt'] }],
     });
@@ -483,10 +486,11 @@ function registerIpcHandlers() {
     return { success: true, cardCount: lines.length };
   });
 
-  ipcMain.handle('export:mindmap', async (_, { paperId }) => {
+  ipcMain.handle('export:mindmap', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.mindmap_path) return { error: 'No mind map for this paper' };
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `${safeTitle(paper)}_mindmap.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
@@ -495,10 +499,11 @@ function registerIpcHandlers() {
     return ok ? { success: true } : { error: `Mind map file not found at ${path.join(DATA_DIR, paper.mindmap_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
-  ipcMain.handle('export:test', async (_, { paperId }) => {
+  ipcMain.handle('export:test', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.test_path) return { error: 'No practice test for this paper' };
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `${safeTitle(paper)}_test.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
@@ -507,7 +512,8 @@ function registerIpcHandlers() {
     return ok ? { success: true } : { error: `Test file not found at ${path.join(DATA_DIR, paper.test_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
-  ipcMain.handle('export:summary', async (_, { paperId }) => {
+  ipcMain.handle('export:summary', async (event, { paperId }) => {
+    const win   = BrowserWindow.fromWebContents(event.sender);
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper?.summary) return { error: 'No summary for this paper' };
 
@@ -540,7 +546,7 @@ function registerIpcHandlers() {
       keywords || '—',
     ].join('\n');
 
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(win, {
       defaultPath: `${safeTitle(paper)}_summary.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
@@ -550,8 +556,9 @@ function registerIpcHandlers() {
   });
 
   // ── Dialog utilities ──────────────────────────────────────────────
-  ipcMain.handle('dialog:openFile', async () => {
-    const res = await dialog.showOpenDialog({
+  ipcMain.handle('dialog:openFile', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const res = await dialog.showOpenDialog(win, {
       properties: ['openFile'],
       filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
     });
@@ -559,8 +566,9 @@ function registerIpcHandlers() {
     return res.filePaths[0];
   });
 
-  ipcMain.handle('dialog:openDirectory', async () => {
-    const res = await dialog.showOpenDialog({
+  ipcMain.handle('dialog:openDirectory', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const res = await dialog.showOpenDialog(win, {
       properties: ['openDirectory', 'createDirectory'],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
