@@ -16,8 +16,8 @@ function Spinner() {
   );
 }
 
-export default function AIActionBar({ paper, generating = {}, onGenerate }) {
-  const anyGenerating = Object.values(generating).some(Boolean);
+export default function AIActionBar({ paper, generating = {}, onGenerate, customSkills = [], customGenerating = {}, onCustomGenerate }) {
+  const anyGenerating = Object.values(generating).some(Boolean) || Object.values(customGenerating).some(Boolean);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-800 bg-gray-900 flex-shrink-0">
@@ -57,6 +57,33 @@ export default function AIActionBar({ paper, generating = {}, onGenerate }) {
               </svg>
             )}
             {isGenerating ? `${label}…` : label}
+          </button>
+        );
+      })}
+
+      {/* Custom skill buttons */}
+      {customSkills.filter(s => s.enabled).map(skill => {
+        const isGenerating = customGenerating[skill.id];
+        return (
+          <button
+            key={skill.id}
+            onClick={() => !anyGenerating && onCustomGenerate?.(skill.id)}
+            disabled={anyGenerating}
+            title={`Run: ${skill.name}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors border ${
+              isGenerating
+                ? 'bg-brand-900/40 border-brand-700 text-brand-300 cursor-wait'
+                : anyGenerating
+                ? 'opacity-40 cursor-not-allowed bg-gray-800 border-gray-700 text-gray-500'
+                : 'bg-gray-800/60 border-gray-700/60 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+            }`}
+          >
+            {isGenerating ? <Spinner /> : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
+            {isGenerating ? `${skill.name}…` : skill.name}
           </button>
         );
       })}

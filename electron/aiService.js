@@ -274,4 +274,42 @@ async function runSkill(db, skillKey, rawText) {
   return { content: stripCodeFence(stripThinkingBlocks(raw)), truncated };
 }
 
-module.exports = { runSkill };
+// ── Custom skill runner ──────────────────────────────────────────────
+async function runCustomSkill(db, { prompt, maxTokens, temperature }, rawText) {
+  let text = rawText || '';
+  let truncated = false;
+  if (text.length > MAX_TEXT_CHARS) {
+    text = text.slice(0, MAX_TEXT_CHARS);
+    truncated = true;
+  }
+
+  const provider = getProvider(db);
+  let raw;
+
+  if (provider === 'ollama') {
+    const ollamaUrl = getSetting(db, 'ai_ollama_url',   'http://localhost:11434');
+    const model     = getSetting(db, 'ai_ollama_model', 'llama3.2');
+    raw = await callOllama(
+      ollamaUrl, model, prompt,
+      `Here is the academic paper text:\n\n${text}`,
+      { maxTokens, temperature }
+    );
+  } else {
+    const apiKey = getApiKey(db);
+    const AnthropicModule = require('@anthropic-ai/sdk');
+    const Anthropic = AnthropicModule.default ?? AnthropicModule;
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model:       CLAUDE_MODEL,
+      max_tokens:  maxTokens,
+      temperature,
+      system:      prompt,
+      messages: [{ role: 'user', content: `Here is the academic paper text:\n\n${text}` }],
+    });
+    raw = response.content[0]?.text ?? '';
+  }
+
+  return { content: stripCodeFence(stripThinkingBlocks(raw)), truncated };
+}
+
+module.exports = { runSkill, runCustomSkill };

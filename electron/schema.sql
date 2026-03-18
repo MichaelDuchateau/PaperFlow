@@ -36,6 +36,26 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS custom_skills (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  max_tokens  INTEGER DEFAULT 2048,
+  temperature REAL    DEFAULT 0.4,
+  prompt      TEXT    NOT NULL DEFAULT '',
+  enabled     INTEGER DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS custom_skill_outputs (
+  id           TEXT PRIMARY KEY,
+  paper_id     TEXT NOT NULL,
+  skill_id     TEXT NOT NULL,
+  skill_name   TEXT NOT NULL,
+  file_path    TEXT NOT NULL,
+  generated_at TEXT NOT NULL,
+  FOREIGN KEY (paper_id) REFERENCES papers(id)     ON DELETE CASCADE,
+  FOREIGN KEY (skill_id) REFERENCES custom_skills(id) ON DELETE CASCADE
+);
+
 -- Default settings (only inserted if key doesn't exist)
 INSERT OR IGNORE INTO settings (key, value) VALUES
   ('reviewer_name',        '""'),

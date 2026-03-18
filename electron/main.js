@@ -366,6 +366,68 @@ function registerIpcHandlers() {
     return { status: 'ok', truncated };
   });
 
+  // ── Custom skills ─────────────────────────────────────────────────
+  ipcMain.handle('customSkills:getAll', () =>
+    db.prepare('SELECT * FROM custom_skills ORDER BY name').all()
+  );
+
+  ipcMain.handle('customSkills:save', (_, skill) => {
+    const { randomUUID } = require('crypto');
+    const id = skill.id || randomUUID();
+    db.prepare(`
+      INSERT OR REPLACE INTO custom_skills (id, name, max_tokens, temperature, prompt, enabled)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, skill.name, skill.max_tokens ?? 2048, skill.temperature ?? 0.4, skill.prompt ?? '', skill.enabled ?? 1);
+    return { id };
+  });
+
+  ipcMain.handle('customSkills:delete', (_, id) => {
+    db.prepare('DELETE FROM custom_skills WHERE id = ?').run(id);
+    return { ok: true };
+  });
+
+  ipcMain.handle('customSkills:run', async (_, { skillId, paperId }) => {
+    const { randomUUID } = require('crypto');
+    const skill = db.prepare('SELECT * FROM custom_skills WHERE id = ?').get(skillId);
+    if (!skill) throw new Error('Custom skill not found');
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) throw new Error('Paper not found');
+
+    const { content, truncated } = await aiService.runCustomSkill(db, {
+      prompt:      skill.prompt,
+      maxTokens:   skill.max_tokens,
+      temperature: skill.temperature,
+    }, paper.raw_text);
+
+    const dir     = path.join(DATA_DIR, 'custom');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const relPath = `custom/${skillId}_${paperId}.md`;
+    fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
+
+    const outputId = randomUUID();
+    db.prepare(`
+      INSERT OR REPLACE INTO custom_skill_outputs (id, paper_id, skill_id, skill_name, file_path, generated_at)
+      VALUES (
+        COALESCE((SELECT id FROM custom_skill_outputs WHERE paper_id=? AND skill_id=?), ?),
+        ?, ?, ?, ?, datetime('now')
+      )
+    `).run(paperId, skillId, outputId, paperId, skillId, skill.name, relPath);
+
+    return { ok: true, truncated };
+  });
+
+  ipcMain.handle('customSkills:getOutputsForPaper', (_, paperId) =>
+    db.prepare('SELECT * FROM custom_skill_outputs WHERE paper_id = ? ORDER BY generated_at DESC').all(paperId)
+  );
+
+  ipcMain.handle('customSkills:getOutputContent', (_, outputId) => {
+    const row = db.prepare('SELECT file_path FROM custom_skill_outputs WHERE id = ?').get(outputId);
+    if (!row) return null;
+    const abs = path.join(DATA_DIR, row.file_path);
+    if (!fs.existsSync(abs)) return null;
+    return fs.readFileSync(abs, 'utf8');
+  });
+
   // ── Ollama helpers ────────────────────────────────────────────────
   ipcMain.handle('ollama:testConnection', async () => {
     const http   = require('http');

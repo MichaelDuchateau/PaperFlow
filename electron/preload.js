@@ -85,4 +85,13 @@ contextBridge.exposeInMainWorld('api', {
     save:   (name, content)       => ipcRenderer.invoke('templates:save', { name, content }),
     delete: (name)                => ipcRenderer.invoke('templates:delete', name),
   },
+
+  customSkills: {
+    getAll:              ()                      => ipcRenderer.invoke('customSkills:getAll'),
+    save:                (skill)                 => ipcRenderer.invoke('customSkills:save', skill),
+    delete:              (id)                    => ipcRenderer.invoke('customSkills:delete', id),
+    run:                 (skillId, paperId)       => ipcRenderer.invoke('customSkills:run', { skillId, paperId }),
+    getOutputsForPaper:  (paperId)               => ipcRenderer.invoke('customSkills:getOutputsForPaper', paperId),
+    getOutputContent:    (outputId)              => ipcRenderer.invoke('customSkills:getOutputContent', outputId),
+  },
 });

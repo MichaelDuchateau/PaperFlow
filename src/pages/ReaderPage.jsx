@@ -57,6 +57,31 @@ function MarkdownPane({ paperId, type }) {
   );
 }
 
+// ── Custom skill output viewer ─────────────────────────────────────
+function CustomOutputPane({ outputId }) {
+  const [content, setContent] = useState('');
+  useEffect(() => {
+    window.api.customSkills.getOutputContent(outputId).then(text => setContent(text ?? ''));
+  }, [outputId]);
+
+  const html = content
+    .replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>')
+    .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^#{4,}\s+(.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+
+  return (
+    <div
+      className="flex-1 overflow-auto px-5 py-4 prose prose-invert prose-sm max-w-none selectable"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 // ── Summary viewer ─────────────────────────────────────────────────
 function SummaryPane({ summary }) {
   let s = {};
@@ -93,12 +118,15 @@ export default function ReaderPage() {
   const [searchParams]       = useSearchParams();
 
   // ── State ──────────────────────────────────────────────────────
-  const [paper,      setPaper]      = useState(null);
-  const [settings,   setSettings]   = useState({});
-  const [allTags,    setAllTags]    = useState([]);
-  const [leftTab,    setLeftTab]    = useState('pdf');
-  const [leftWidth,  setLeftWidth]  = useState(LEFT_DEFAULT); // percent
-  const [generating, setGenerating] = useState({ mindmap: false, summary: false, flashcards: false, test: false });
+  const [paper,             setPaper]             = useState(null);
+  const [settings,          setSettings]          = useState({});
+  const [allTags,           setAllTags]            = useState([]);
+  const [leftTab,           setLeftTab]            = useState('pdf');
+  const [leftWidth,         setLeftWidth]          = useState(LEFT_DEFAULT);
+  const [generating,        setGenerating]         = useState({ mindmap: false, summary: false, flashcards: false, test: false });
+  const [customSkills,      setCustomSkills]       = useState([]);
+  const [customOutputs,     setCustomOutputs]      = useState([]); // [{id, skill_id, skill_name, ...}]
+  const [customGenerating,  setCustomGenerating]   = useState({});
   const [toast,      setToast]      = useState(null);
 
   const containerRef    = useRef(null);
@@ -116,11 +144,14 @@ export default function ReaderPage() {
       window.api.papers.getById(id),
       window.api.settings.getAll(),
       window.api.tags.getAll(),
-    ]).then(([p, s, t]) => {
+      window.api.customSkills.getAll(),
+      window.api.customSkills.getOutputsForPaper(id),
+    ]).then(([p, s, t, cs, co]) => {
       setPaper(p);
       setSettings(s ?? {});
       setAllTags(t ?? []);
-      // ?tab=mindmap switches the left panel tab
+      setCustomSkills(cs ?? []);
+      setCustomOutputs(co ?? []);
       if (searchParams.get('tab') === 'mindmap') setLeftTab('mindmap');
     });
   }, [id]);
@@ -143,6 +174,25 @@ export default function ReaderPage() {
     const tags = JSON.stringify(newTagIds);
     await window.api.papers.update(id, { tags });
     setPaper(prev => ({ ...prev, tags }));
+  }, [id]);
+
+  // ── Custom skill generation ───────────────────────────────────
+  const handleCustomGenerate = useCallback(async (skillId) => {
+    setCustomGenerating(prev => ({ ...prev, [skillId]: true }));
+    showToast('info', 'Running custom skill…');
+    try {
+      const result = await window.api.customSkills.run(skillId, id);
+      const outputs = await window.api.customSkills.getOutputsForPaper(id);
+      setCustomOutputs(outputs);
+      const output = outputs.find(o => o.skill_id === skillId);
+      if (output) setLeftTab(`custom_${skillId}`);
+      if (result?.truncated) showToast('info', 'Done (paper was truncated).');
+      else showToast('success', 'Custom skill done!');
+    } catch (err) {
+      showToast('error', err.message);
+    } finally {
+      setCustomGenerating(prev => ({ ...prev, [skillId]: false }));
+    }
   }, [id]);
 
   // ── PDF text → notes injection ────────────────────────────────
@@ -239,11 +289,13 @@ export default function ReaderPage() {
         allTags={allTags}
         onTagsChange={handleTagsChange}
         pomodoroWidget={
-          <PomodoroWidget
-            paperId={id}
-            settings={settings}
-            onSettingsChange={handleSettingsChange}
-          />
+          settings.pomodoro_enabled !== false ? (
+            <PomodoroWidget
+              paperId={id}
+              settings={settings}
+              onSettingsChange={handleSettingsChange}
+            />
+          ) : null
         }
       />
 
@@ -264,6 +316,7 @@ export default function ReaderPage() {
               ...(paper?.summary         ? [{ id: 'summary',    label: 'Summary'   }] : []),
               ...(paper?.flashcards_path ? [{ id: 'flashcards', label: 'Flashcards'}] : []),
               ...(paper?.test_path       ? [{ id: 'test',       label: 'Test'      }] : []),
+              ...customOutputs.map(o => ({ id: `custom_${o.skill_id}`, label: o.skill_name })),
             ]}
           />
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
@@ -272,6 +325,11 @@ export default function ReaderPage() {
             {leftTab === 'summary'    && <SummaryPane summary={paper?.summary} />}
             {leftTab === 'flashcards' && <MarkdownPane paperId={id} type="flashcards" />}
             {leftTab === 'test'       && <MarkdownPane paperId={id} type="test" />}
+            {leftTab.startsWith('custom_') && (() => {
+              const skillId = leftTab.slice(7);
+              const output  = customOutputs.find(o => o.skill_id === skillId);
+              return output ? <CustomOutputPane outputId={output.id} /> : null;
+            })()}
           </div>
         </div>
 
@@ -301,7 +359,14 @@ export default function ReaderPage() {
       </div>
 
       {/* AI action bar */}
-      <AIActionBar paper={paper} generating={generating} onGenerate={handleGenerate} />
+      <AIActionBar
+        paper={paper}
+        generating={generating}
+        onGenerate={handleGenerate}
+        customSkills={customSkills}
+        customGenerating={customGenerating}
+        onCustomGenerate={handleCustomGenerate}
+      />
 
       {/* Toast */}
       {toast && (

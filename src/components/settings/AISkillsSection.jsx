@@ -251,6 +251,118 @@ function OllamaPanel({ settings }) {
   );
 }
 
+// ── Custom skill editor ────────────────────────────────────────────
+function CustomSkillForm({ skill, onSave, onCancel }) {
+  const [name,        setName]        = useState(skill?.name        ?? '');
+  const [maxTokens,   setMaxTokens]   = useState(skill?.max_tokens  ?? 2048);
+  const [temperature, setTemperature] = useState(skill?.temperature ?? 0.4);
+  const [prompt,      setPrompt]      = useState(skill?.prompt      ?? '');
+  const [saving,      setSaving]      = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim() || !prompt.trim()) return;
+    setSaving(true);
+    await onSave({ id: skill?.id, name: name.trim(), max_tokens: maxTokens, temperature, prompt, enabled: 1 });
+    setSaving(false);
+  };
+
+  return (
+    <div className="rounded-lg bg-gray-800/40 border border-gray-700/50 p-4 space-y-3">
+      <input
+        type="text"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="Skill name (e.g. Key Equations)"
+        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-brand-500"
+      />
+      <div className="flex gap-4">
+        <label className="flex-1">
+          <span className="text-xs text-gray-400 block mb-1">Max tokens</span>
+          <input type="number" value={maxTokens} onChange={e => setMaxTokens(Number(e.target.value))}
+            min={256} max={8192} step={256}
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 focus:outline-none focus:border-brand-500" />
+        </label>
+        <label className="w-28">
+          <span className="text-xs text-gray-400 block mb-1">Temperature</span>
+          <input type="number" value={temperature} onChange={e => setTemperature(Number(e.target.value))}
+            min={0} max={1} step={0.05}
+            className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-gray-100 focus:outline-none focus:border-brand-500" />
+        </label>
+      </div>
+      <div>
+        <span className="text-xs text-gray-400 block mb-1">System prompt</span>
+        <div className="rounded-lg overflow-hidden border border-gray-700">
+          <PromptEditor value={prompt} onChange={setPrompt} />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving || !name.trim() || !prompt.trim()}
+          className="px-3 py-1 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs rounded-lg transition-colors">
+          {saving ? 'Saving…' : 'Save skill'}
+        </button>
+        <button onClick={onCancel}
+          className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CustomSkillsPanel() {
+  const [skills,   setSkills]   = useState([]);
+  const [editing,  setEditing]  = useState(null); // null | 'new' | skill.id
+  const [editSkill, setEditSkill] = useState(null);
+
+  const load = () => window.api.customSkills.getAll().then(setSkills);
+  useEffect(() => { load(); }, []);
+
+  const handleSave = async (data) => {
+    await window.api.customSkills.save(data);
+    await load();
+    setEditing(null);
+    setEditSkill(null);
+  };
+
+  const handleDelete = async (id) => {
+    await window.api.customSkills.delete(id);
+    await load();
+  };
+
+  const handleEdit = (skill) => {
+    setEditSkill(skill);
+    setEditing(skill.id);
+  };
+
+  return (
+    <div className="space-y-3">
+      {skills.map(skill => (
+        editing === skill.id ? (
+          <CustomSkillForm key={skill.id} skill={skill} onSave={handleSave} onCancel={() => setEditing(null)} />
+        ) : (
+          <div key={skill.id} className="flex items-center justify-between rounded-lg bg-gray-800/40 border border-gray-700/50 px-4 py-2.5">
+            <span className="text-sm text-gray-200">{skill.name}</span>
+            <div className="flex gap-2">
+              <button onClick={() => handleEdit(skill)}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Edit</button>
+              <button onClick={() => handleDelete(skill.id)}
+                className="text-xs text-red-600 hover:text-red-400 transition-colors">Delete</button>
+            </div>
+          </div>
+        )
+      ))}
+      {editing === 'new' ? (
+        <CustomSkillForm onSave={handleSave} onCancel={() => setEditing(null)} />
+      ) : (
+        <button onClick={() => { setEditing('new'); setEditSkill(null); }}
+          className="w-full py-2 border border-dashed border-gray-700 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:border-gray-500 transition-colors">
+          + Add custom skill
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Main section ───────────────────────────────────────────────────
 export default function AISkillsSection({ settings }) {
   const [provider,    setProvider]    = useState(settings.ai_provider ?? 'claude');
@@ -381,6 +493,13 @@ export default function AISkillsSection({ settings }) {
             onSkillSave={handleSkillSave}
           />
         ))}
+      </div>
+
+      {/* Custom skills */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Custom skills</p>
+        <p className="text-xs text-gray-600">Custom skills run your own prompt against the paper and save the result as a Markdown file, visible as a tab in the reader.</p>
+        <CustomSkillsPanel />
       </div>
     </div>
   );
