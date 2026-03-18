@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import 'pdfjs-dist/web/pdf_viewer.css';
 
 // Point pdfjs at the bundled worker (Vite resolves ?url to a proper URL in both dev and prod)
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -27,10 +28,7 @@ function PDFPage({ page, scale = SCALE }) {
     // Text layer — pdfjs v4 uses new TextLayer({ textContentSource, container, viewport })
     const textContainer = textLayerRef.current;
     if (textContainer) {
-      textContainer.style.width  = `${viewport.width}px`;
-      textContainer.style.height = `${viewport.height}px`;
-      textContainer.innerHTML    = '';
-
+      textContainer.innerHTML = '';
       const tl = new pdfjsLib.TextLayer({
         textContentSource: page.streamTextContent(),
         container: textContainer,
@@ -54,7 +52,7 @@ function PDFPage({ page, scale = SCALE }) {
         className="block bg-white"
         style={{ maxWidth: '100%' }}
       />
-      <div ref={textLayerRef} className="pdf-text-layer" />
+      <div ref={textLayerRef} className="textLayer" />
     </div>
   );
 }

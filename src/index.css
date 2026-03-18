@@ -43,26 +43,16 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* PDF text layer — transparent selectable text over canvas */
-.pdf-text-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: hidden;
-  line-height: 1;
-  -webkit-text-size-adjust: none;
+/* Allow text selection inside the pdfjs text layer (body disables it globally) */
+.textLayer {
   -webkit-user-select: text;
   user-select: text;
 }
-.pdf-text-layer span,
-.pdf-text-layer br {
-  color: transparent;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0% 0%;
+.textLayer :is(span, br) {
+  -webkit-user-select: text;
+  user-select: text;
 }
-.pdf-text-layer span::selection {
+.textLayer span::selection {
   background-color: rgba(59, 130, 246, 0.35);
   color: transparent;
 }
