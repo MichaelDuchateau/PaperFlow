@@ -358,7 +358,7 @@ function registerIpcHandlers() {
     const http   = require('http');
     const https  = require('https');
     const row    = db.prepare("SELECT value FROM settings WHERE key = 'ai_ollama_url'").get();
-    const base   = row ? JSON.parse(row.value) : 'http://localhost:11434';
+    const base   = row ? (row.value || 'http://localhost:11434') : 'http://localhost:11434';
     return new Promise((resolve) => {
       try {
         const url       = new URL('/', base);
@@ -384,7 +384,7 @@ function registerIpcHandlers() {
     const http   = require('http');
     const https  = require('https');
     const row    = db.prepare("SELECT value FROM settings WHERE key = 'ai_ollama_url'").get();
-    const base   = row ? JSON.parse(row.value) : 'http://localhost:11434';
+    const base   = row ? (row.value || 'http://localhost:11434') : 'http://localhost:11434';
     return new Promise((resolve, reject) => {
       try {
         const url       = new URL('/api/tags', base);
