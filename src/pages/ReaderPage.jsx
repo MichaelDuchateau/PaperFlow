@@ -50,10 +50,13 @@ export default function ReaderPage() {
   const [generating, setGenerating] = useState({ mindmap: false, summary: false, flashcards: false, test: false });
   const [toast,      setToast]      = useState(null);
 
-  const containerRef  = useRef(null);
-  const draggingRef   = useRef(false);
-  const startXRef     = useRef(0);
-  const startWidthRef = useRef(LEFT_DEFAULT);
+  const containerRef    = useRef(null);
+  const draggingRef     = useRef(false);
+  const startXRef       = useRef(0);
+  const startWidthRef   = useRef(LEFT_DEFAULT);
+  const notesEditorRef  = useRef(null);
+
+  const [selectedPdfText, setSelectedPdfText] = useState(null);
 
   // ── Load paper + settings ─────────────────────────────────────
   useEffect(() => {
@@ -90,6 +93,18 @@ export default function ReaderPage() {
     await window.api.papers.update(id, { tags });
     setPaper(prev => ({ ...prev, tags }));
   }, [id]);
+
+  // ── PDF text → notes injection ────────────────────────────────
+  const handlePdfTextSelected = useCallback((text) => {
+    setSelectedPdfText(text || null);
+  }, []);
+
+  const handleInjectText = useCallback(() => {
+    if (!selectedPdfText || !notesEditorRef.current) return;
+    notesEditorRef.current.insertAtCursor(selectedPdfText);
+    setSelectedPdfText(null);
+    window.getSelection()?.removeAllRanges();
+  }, [selectedPdfText]);
 
   // ── Export note ───────────────────────────────────────────────
   const handleExportNote = useCallback(async () => {
@@ -195,7 +210,7 @@ export default function ReaderPage() {
           />
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
             {leftTab === 'pdf' ? (
-              <PDFViewer paperId={id} />
+              <PDFViewer paperId={id} onTextSelected={handlePdfTextSelected} />
             ) : (
               <MindMapViewer
                 paperId={id}
@@ -207,16 +222,28 @@ export default function ReaderPage() {
           </div>
         </div>
 
-        {/* ── Resize handle ────────────────────────────────────── */}
+        {/* ── Resize handle + inject button ────────────────────── */}
         <div
           onMouseDown={handleResizeMouseDown}
-          className="w-1 flex-shrink-0 bg-gray-800 hover:bg-brand-600/60 cursor-col-resize transition-colors active:bg-brand-500"
-          style={{ cursor: 'col-resize' }}
-        />
+          className="relative w-1 flex-shrink-0 bg-gray-800 hover:bg-brand-600/60 cursor-col-resize transition-colors active:bg-brand-500 overflow-visible"
+        >
+          {selectedPdfText && (
+            <button
+              onMouseDown={e => e.stopPropagation()}
+              onClick={handleInjectText}
+              title="Send selection to notes"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-6 h-6 bg-brand-500 hover:bg-brand-400 rounded-full flex items-center justify-center shadow-lg transition-colors cursor-pointer no-drag"
+            >
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
 
         {/* ── Right panel — Notes ──────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0 min-h-0">
-          <NotesEditor paperId={id} paper={paper} settings={settings} />
+          <NotesEditor ref={notesEditorRef} paperId={id} paper={paper} settings={settings} />
         </div>
       </div>
 

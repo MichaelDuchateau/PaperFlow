@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { EditorState }   from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
@@ -29,7 +29,7 @@ function renderMarkdown(md) {
     .trim();
 }
 
-export default function NotesEditor({ paperId, paper, settings }) {
+const NotesEditor = forwardRef(function NotesEditor({ paperId, paper, settings }, ref) {
   const editorContainerRef = useRef(null);
   const viewRef            = useRef(null);
   const saveTimerRef       = useRef(null);
@@ -130,6 +130,23 @@ export default function NotesEditor({ paperId, paper, settings }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, mode, paperId]);
 
+  // ── Expose insertAtCursor to parent via ref ───────────────────
+  useImperativeHandle(ref, () => ({
+    insertAtCursor(text) {
+      const view = viewRef.current;
+      if (!view) return;
+      // Switch to edit mode if in preview
+      setMode('edit');
+      // Insert at cursor position (or end if no cursor)
+      const from = view.state.selection.main.from;
+      view.dispatch({
+        changes: { from, insert: text },
+        selection: { anchor: from + text.length },
+      });
+      view.focus();
+    },
+  }), []);
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">
@@ -183,4 +200,6 @@ export default function NotesEditor({ paperId, paper, settings }) {
       )}
     </div>
   );
-}
+});
+
+export default NotesEditor;

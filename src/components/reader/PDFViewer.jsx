@@ -7,36 +7,65 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const SCALE = 1.5;
 
-/** Renders a single PDF page into a <canvas> */
+/** Renders a single PDF page into a <canvas> with a selectable text layer on top */
 function PDFPage({ page, scale = SCALE }) {
-  const canvasRef = useRef(null);
+  const canvasRef    = useRef(null);
+  const textLayerRef = useRef(null);
+  const tlInstanceRef = useRef(null);
 
   useEffect(() => {
     if (!page || !canvasRef.current) return;
+
     const viewport = page.getViewport({ scale });
     const canvas   = canvasRef.current;
     canvas.height  = viewport.height;
     canvas.width   = viewport.width;
-    const ctx      = canvas.getContext('2d');
-    const task     = page.render({ canvasContext: ctx, viewport });
-    return () => task.cancel();
+
+    const ctx        = canvas.getContext('2d');
+    const renderTask = page.render({ canvasContext: ctx, viewport });
+
+    // Text layer — pdfjs v4 uses new TextLayer({ textContentSource, container, viewport })
+    const textContainer = textLayerRef.current;
+    if (textContainer) {
+      textContainer.style.width  = `${viewport.width}px`;
+      textContainer.style.height = `${viewport.height}px`;
+      textContainer.innerHTML    = '';
+
+      const tl = new pdfjsLib.TextLayer({
+        textContentSource: page.streamTextContent(),
+        container: textContainer,
+        viewport,
+      });
+      tlInstanceRef.current = tl;
+      tl.render().catch(() => { /* cancelled */ });
+    }
+
+    return () => {
+      renderTask.cancel();
+      tlInstanceRef.current?.cancel();
+      tlInstanceRef.current = null;
+    };
   }, [page, scale]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="block mx-auto shadow-lg bg-white"
-      style={{ maxWidth: '100%' }}
-    />
+    <div className="relative mx-auto shadow-lg" style={{ display: 'inline-block' }}>
+      <canvas
+        ref={canvasRef}
+        className="block bg-white"
+        style={{ maxWidth: '100%' }}
+      />
+      <div ref={textLayerRef} className="pdf-text-layer" />
+    </div>
   );
 }
 
-export default function PDFViewer({ paperId }) {
-  const [pages,    setPages]    = useState([]);   // pdfjs Page objects
+export default function PDFViewer({ paperId, onTextSelected }) {
+  const [pages,    setPages]    = useState([]);
   const [numPages, setNumPages] = useState(0);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
   const pdfDocRef = useRef(null);
+  const viewerRef = useRef(null);
 
   const loadPdf = useCallback(async () => {
     if (!paperId) return;
@@ -48,7 +77,6 @@ export default function PDFViewer({ paperId }) {
       const buffer = await window.api.papers.getPdfBuffer(paperId);
       if (!buffer) throw new Error('PDF file not found.');
 
-      // Electron IPC sends Buffer as Uint8Array
       const data = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
       const loadingTask = pdfjsLib.getDocument({ data });
@@ -56,7 +84,6 @@ export default function PDFViewer({ paperId }) {
       pdfDocRef.current = pdf;
       setNumPages(pdf.numPages);
 
-      // Load all pages (lazy render for large PDFs is a Phase-later optimisation)
       const pageObjects = await Promise.all(
         Array.from({ length: pdf.numPages }, (_, i) => pdf.getPage(i + 1))
       );
@@ -72,6 +99,20 @@ export default function PDFViewer({ paperId }) {
     loadPdf();
     return () => { pdfDocRef.current?.destroy(); pdfDocRef.current = null; };
   }, [loadPdf]);
+
+  // Detect text selection inside the PDF panel
+  useEffect(() => {
+    const container = viewerRef.current;
+    if (!container || !onTextSelected) return;
+
+    const handleMouseUp = () => {
+      const text = window.getSelection()?.toString().trim() || null;
+      onTextSelected(text);
+    };
+
+    container.addEventListener('mouseup', handleMouseUp);
+    return () => container.removeEventListener('mouseup', handleMouseUp);
+  }, [onTextSelected]);
 
   if (loading) {
     return (
@@ -99,8 +140,7 @@ export default function PDFViewer({ paperId }) {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-950 px-4 py-4 space-y-4">
-      {/* Page count */}
+    <div ref={viewerRef} className="flex-1 overflow-auto bg-gray-950 px-4 py-4 space-y-4 selectable">
       <p className="text-xs text-gray-600 text-center">{numPages} page{numPages !== 1 ? 's' : ''}</p>
 
       {pages.map((page, i) => (
