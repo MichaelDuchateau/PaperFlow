@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('api', {
     add:          (filePath)  => ipcRenderer.invoke('papers:add', filePath),
     update:       (id, data)  => ipcRenderer.invoke('papers:update', { id, data }),
     delete:       (id)        => ipcRenderer.invoke('papers:delete', id),
-    getPdfBuffer: (id)        => ipcRenderer.invoke('papers:getPdfBuffer', id),
+    getPdfBuffer:      (id)           => ipcRenderer.invoke('papers:getPdfBuffer', id),
+    getGeneratedFile:  (paperId, type) => ipcRenderer.invoke('papers:getGeneratedFile', { paperId, type }),
   },
 
   tags: {

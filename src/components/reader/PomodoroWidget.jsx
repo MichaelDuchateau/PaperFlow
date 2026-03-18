@@ -59,8 +59,8 @@ function SettingsPopover({ workMin, breakMin, enabled, onSave, onClose }) {
       <label className="flex items-center justify-between">
         <span className="text-xs text-gray-400">Enable timer</span>
         <button onClick={() => setEn(v => !v)}
-          className={`relative w-9 h-5 rounded-full overflow-hidden transition-colors ${en ? 'bg-brand-600' : 'bg-gray-700'}`}>
-          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${en ? 'translate-x-4' : 'translate-x-0.5'}`} />
+          className={`inline-flex items-center w-9 h-5 rounded-full p-0.5 transition-colors ${en ? 'bg-brand-600' : 'bg-gray-700'}`}>
+          <span className={`block w-4 h-4 bg-white rounded-full shadow transition-transform ${en ? 'translate-x-4' : 'translate-x-0'}`} />
         </button>
       </label>
 

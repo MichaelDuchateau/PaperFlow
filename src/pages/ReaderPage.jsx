@@ -12,27 +12,78 @@ const LEFT_MAX = 80;
 const LEFT_DEFAULT = 55;
 
 // ── Tab bar for left panel ─────────────────────────────────────────
-function LeftTabs({ active, onChange, hasMindmap }) {
-  const tabs = [
-    { id: 'pdf',     label: 'PDF' },
-    { id: 'mindmap', label: 'Mind Map', dot: hasMindmap },
-  ];
+function LeftTabs({ active, onChange, tabs }) {
   return (
-    <div className="flex border-b border-gray-800 bg-gray-900 flex-shrink-0">
+    <div className="flex border-b border-gray-800 bg-gray-900 flex-shrink-0 overflow-x-auto">
       {tabs.map(t => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
+          className={`flex-shrink-0 px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
             active === t.id
               ? 'border-brand-500 text-brand-400'
               : 'border-transparent text-gray-500 hover:text-gray-300'
           }`}
         >
           {t.label}
-          {t.dot && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ── Simple markdown renderer for generated content ─────────────────
+function MarkdownPane({ paperId, type }) {
+  const [content, setContent] = useState('');
+  useEffect(() => {
+    window.api.papers.getGeneratedFile(paperId, type).then(text => setContent(text ?? ''));
+  }, [paperId, type]);
+
+  const html = content
+    .replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>')
+    .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^#{4,}\s+(.+)$/gm, '<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+
+  return (
+    <div
+      className="flex-1 overflow-auto px-5 py-4 prose prose-invert prose-sm max-w-none selectable"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+// ── Summary viewer ─────────────────────────────────────────────────
+function SummaryPane({ summary }) {
+  let s = {};
+  try { s = JSON.parse(summary); } catch { /* */ }
+  const authors  = Array.isArray(s.authors)  ? s.authors.join(', ')                         : (s.authors  ?? '—');
+  const keywords = Array.isArray(s.keywords) ? s.keywords.map(k => `#${k}`).join('  ')      : (s.keywords ?? '');
+  const field = (label, val) => val ? (
+    <div key={label} className="space-y-0.5">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
+      <p className="text-sm text-gray-200 leading-relaxed">{val}</p>
+    </div>
+  ) : null;
+
+  return (
+    <div className="flex-1 overflow-auto px-5 py-4 space-y-4 selectable">
+      <h2 className="text-base font-bold text-gray-100 leading-snug">{s.title ?? '—'}</h2>
+      <p className="text-xs text-gray-500">{authors}{s.year ? ` · ${s.year}` : ''}{s.journal ? ` · ${s.journal}` : ''}</p>
+      {field('Objective',   s.objective)}
+      {field('Methods',     s.methods)}
+      {field('Results',     s.results)}
+      {field('Conclusions', s.conclusions)}
+      {keywords && (
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Keywords</p>
+          <p className="text-xs text-brand-400 leading-relaxed">{keywords}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -130,7 +181,8 @@ export default function ReaderPage() {
     try {
       const result = await window.api.ai[skill](id);
       await refreshPaper();
-      if (skill === 'mindmap') setLeftTab('mindmap');
+      // Auto-switch to the newly generated tab
+      if (['mindmap', 'summary', 'flashcards', 'test'].includes(skill)) setLeftTab(skill);
       const label = skill.charAt(0).toUpperCase() + skill.slice(1);
       if (result?.truncated) {
         showToast('info', `${label} generated (paper was truncated — very large PDF).`);
@@ -206,19 +258,20 @@ export default function ReaderPage() {
           <LeftTabs
             active={leftTab}
             onChange={setLeftTab}
-            hasMindmap={!!paper?.mindmap_path}
+            tabs={[
+              { id: 'pdf',        label: 'PDF' },
+              ...(paper?.mindmap_path    ? [{ id: 'mindmap',    label: 'Mind Map'  }] : []),
+              ...(paper?.summary         ? [{ id: 'summary',    label: 'Summary'   }] : []),
+              ...(paper?.flashcards_path ? [{ id: 'flashcards', label: 'Flashcards'}] : []),
+              ...(paper?.test_path       ? [{ id: 'test',       label: 'Test'      }] : []),
+            ]}
           />
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
-            {leftTab === 'pdf' ? (
-              <PDFViewer paperId={id} onTextSelected={handlePdfTextSelected} />
-            ) : (
-              <MindMapViewer
-                paperId={id}
-                paper={paper}
-                onGenerate={handleGenerate}
-                generating={generating.mindmap}
-              />
-            )}
+            {leftTab === 'pdf'        && <PDFViewer paperId={id} onTextSelected={handlePdfTextSelected} />}
+            {leftTab === 'mindmap'    && <MindMapViewer paperId={id} paper={paper} onGenerate={handleGenerate} generating={generating.mindmap} />}
+            {leftTab === 'summary'    && <SummaryPane summary={paper?.summary} />}
+            {leftTab === 'flashcards' && <MarkdownPane paperId={id} type="flashcards" />}
+            {leftTab === 'test'       && <MarkdownPane paperId={id} type="test" />}
           </div>
         </div>
 

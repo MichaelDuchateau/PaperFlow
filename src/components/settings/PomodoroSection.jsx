@@ -55,9 +55,9 @@ export default function PomodoroSection({ settings, onSave }) {
         </div>
         <button
           onClick={() => setEnabled(v => !v)}
-          className={`relative w-11 h-6 rounded-full overflow-hidden transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
+          className={`inline-flex items-center w-11 h-6 rounded-full p-0.5 transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
         >
-          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          <span className={`block w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
       </div>
 

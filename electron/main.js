@@ -284,6 +284,19 @@ function registerIpcHandlers() {
     return fs.readFileSync(abs); // Buffer → serialised as Uint8Array on renderer side
   });
 
+  // Read a generated file (flashcards / test) and return its text content
+  ipcMain.handle('papers:getGeneratedFile', (_, { paperId, type }) => {
+    const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
+    if (!paper) return null;
+    const relPath = type === 'flashcards' ? paper.flashcards_path
+                  : type === 'test'       ? paper.test_path
+                  : null;
+    if (!relPath) return null;
+    const abs = path.join(DATA_DIR, relPath);
+    if (!fs.existsSync(abs)) return null;
+    return fs.readFileSync(abs, 'utf8');
+  });
+
   ipcMain.handle('markmap:transform', (_, markdown) => {
     const { Transformer } = require('markmap-lib');
     const transformer     = new Transformer();

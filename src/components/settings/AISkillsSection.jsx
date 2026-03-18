@@ -69,9 +69,9 @@ function SkillPanel({ skillKey, skillSettings, skillPrompt, onSkillSave }) {
         <p className="text-sm font-semibold text-gray-100">{SKILL_LABELS[skillKey]}</p>
         <button
           onClick={() => setEnabled(v => !v)}
-          className={`relative w-10 h-5 rounded-full overflow-hidden transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
+          className={`inline-flex items-center w-10 h-5 rounded-full p-0.5 transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
         >
-          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          <span className={`block w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
         </button>
       </div>
 
