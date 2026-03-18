@@ -134,32 +134,32 @@ changes needed there. All renderer code is unaffected.
 ### Tasks
 
 #### A — Main process
-- [ ] 10.1 Rename `electron/claudeService.js` → `electron/aiService.js`; update `require` in `main.js`
-- [ ] 10.2 Add `getProvider(db)` helper (reads `ai_provider` setting)
-- [ ] 10.3 Add `callOllama(ollamaUrl, model, systemPrompt, userText, config)` function
+- [x] 10.1 Rename `electron/claudeService.js` → `electron/aiService.js`; update `require` in `main.js`
+- [x] 10.2 Add `getProvider(db)` helper (reads `ai_provider` setting)
+- [x] 10.3 Add `callOllama(ollamaUrl, model, systemPrompt, userText, config)` function
   - POST to `<ollamaUrl>/api/chat` with `{ model, stream: false, messages: [system, user], options: { temperature, num_predict } }`
   - Returns `{ content, truncated }` — same shape as Claude path
-- [ ] 10.4 Branch `runSkill()` on provider: Claude path unchanged; Ollama path uses `callOllama()`
-- [ ] 10.5 Add `ollama:listModels` IPC handler — GET `<ollamaUrl>/api/tags`, return model name array
-- [ ] 10.6 Add `ollama:testConnection` IPC handler — HEAD/GET `<ollamaUrl>/`, return `{ ok, error? }`
-- [ ] 10.7 Expose `ollama.listModels` and `ollama.testConnection` in `electron/preload.js`
-- [ ] 10.8 Add 3 new default rows to `electron/schema.sql`
+- [x] 10.4 Branch `runSkill()` on provider: Claude path unchanged; Ollama path uses `callOllama()`
+- [x] 10.5 Add `ollama:listModels` IPC handler — GET `<ollamaUrl>/api/tags`, return model name array
+- [x] 10.6 Add `ollama:testConnection` IPC handler — HEAD/GET `<ollamaUrl>/`, return `{ ok, error? }`
+- [x] 10.7 Expose `ollama.listModels` and `ollama.testConnection` in `electron/preload.js`
+- [x] 10.8 Add 3 new default rows to `electron/schema.sql`
 
 #### B — Settings UI
-- [ ] 10.9  Add provider selector (Claude / Ollama radio toggle) at top of AI Skills section
+- [x] 10.9  Add provider selector (Claude / Ollama radio toggle) at top of AI Skills section
   - Saves `ai_provider`; shows/hides the relevant config panel below
-- [ ] 10.10 Add Ollama config panel (shown when Ollama selected):
+- [x] 10.10 Add Ollama config panel (shown when Ollama selected):
   - Base URL text input (default `http://localhost:11434`)
   - Connection status badge — calls `ollama:testConnection` on mount + "Test" button
   - Model dropdown — populated by `ollama:listModels`; "Refresh" button
   - Saves `ai_ollama_url` and `ai_ollama_model`
-- [ ] 10.11 Rename existing "Anthropic API key" block → "Claude API" and wrap it so it is
+- [x] 10.11 Rename existing "Anthropic API key" block → "Claude API" and wrap it so it is
   only shown when Claude provider is selected
 
 #### C — Verify & polish
-- [ ] 10.12 Build verify (`vite build`)
+- [x] 10.12 Build verify (`vite build`) — passes cleanly
 - [ ] 10.13 Manual smoke test: switch to Ollama, generate mind map, confirm file saved
-- [ ] 10.14 Update README with Ollama setup section
+- [x] 10.14 Update README with Ollama setup section
 
 ### Out of scope for this phase
 - Per-skill provider override (global provider only)

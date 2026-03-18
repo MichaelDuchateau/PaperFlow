@@ -24,7 +24,7 @@ A local-first desktop app for reading and annotating academic papers. Drag in a 
 | Shell | Electron 32 |
 | Frontend | React 18 + Vite 5 + Tailwind CSS 3 |
 | Database | SQLite via better-sqlite3 (WAL mode) |
-| AI | Anthropic Claude API (`claude-sonnet-4-6`) |
+| AI | Anthropic Claude API (`claude-sonnet-4-6`) or Ollama (local) |
 | PDF view | pdfjs-dist 4 |
 | PDF extract | pdf-parse |
 | Mind map | Markmap 0.18 |
@@ -59,12 +59,45 @@ npm run dev
 
 ---
 
-## Adding your API key
+## AI provider setup
+
+PaperFlow supports two AI providers. Switch between them in **Settings → AI Skills → AI Provider**.
+
+### Claude (Anthropic API) — default
 
 1. Launch the app and click **Settings** (gear icon in the dashboard)
 2. Go to **AI Skills**
-3. Paste your Anthropic API key — it is stored encrypted via your OS keychain (`safeStorage`)
-4. Optionally customise the system prompt, max tokens, and temperature per skill
+3. Make sure **Claude (Anthropic API)** is selected
+4. Paste your Anthropic API key — stored encrypted via your OS keychain (`safeStorage`)
+5. Optionally customise the system prompt, max tokens, and temperature per skill
+
+### Ollama (local, no API key required)
+
+Run all 4 AI skills against a locally-running [Ollama](https://ollama.com) instance — no internet connection or API key needed.
+
+**Prerequisites:**
+
+```bash
+# Install Ollama
+brew install ollama        # macOS
+# or download from https://ollama.com
+
+# Pull a model (llama3.2 is the default)
+ollama pull llama3.2
+
+# Start the Ollama server (runs on http://localhost:11434)
+ollama serve
+```
+
+**Configure in PaperFlow:**
+
+1. Go to **Settings → AI Skills**
+2. Select **Ollama (local)**
+3. The connection status badge will turn green if Ollama is reachable
+4. Click **Refresh** to load your pulled models, then select one from the dropdown
+5. Click **Save**
+
+> **Note:** Ollama models are generally less capable than `claude-sonnet-4-6` for structured tasks like JSON summary extraction. Results may vary by model. Models with at least 7B parameters are recommended.
 
 ---
 
