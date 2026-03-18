@@ -44,6 +44,7 @@ export default function ReaderPage() {
   // ── State ──────────────────────────────────────────────────────
   const [paper,      setPaper]      = useState(null);
   const [settings,   setSettings]   = useState({});
+  const [allTags,    setAllTags]    = useState([]);
   const [leftTab,    setLeftTab]    = useState('pdf');
   const [leftWidth,  setLeftWidth]  = useState(LEFT_DEFAULT); // percent
   const [generating, setGenerating] = useState({ mindmap: false, summary: false, flashcards: false, test: false });
@@ -60,9 +61,11 @@ export default function ReaderPage() {
     Promise.all([
       window.api.papers.getById(id),
       window.api.settings.getAll(),
-    ]).then(([p, s]) => {
+      window.api.tags.getAll(),
+    ]).then(([p, s, t]) => {
       setPaper(p);
       setSettings(s ?? {});
+      setAllTags(t ?? []);
       // ?tab=mindmap switches the left panel tab
       if (searchParams.get('tab') === 'mindmap') setLeftTab('mindmap');
     });
@@ -80,6 +83,24 @@ export default function ReaderPage() {
     }
     setSettings(prev => ({ ...prev, ...updates }));
   }, []);
+
+  // ── Tag update ────────────────────────────────────────────────
+  const handleTagsChange = useCallback(async (newTagIds) => {
+    const tags = JSON.stringify(newTagIds);
+    await window.api.papers.update(id, { tags });
+    setPaper(prev => ({ ...prev, tags }));
+  }, [id]);
+
+  // ── Export note ───────────────────────────────────────────────
+  const handleExportNote = useCallback(async () => {
+    try {
+      const result = await window.api.export.note(id);
+      if (result?.error) showToast('error', result.error);
+      else showToast('success', 'Note exported.');
+    } catch (err) {
+      showToast('error', err.message);
+    }
+  }, [id]);
 
   // ── Title edit ────────────────────────────────────────────────
   const handleTitleChange = useCallback(async (newTitle) => {
@@ -147,6 +168,9 @@ export default function ReaderPage() {
       <ReaderTopBar
         paper={paper}
         onTitleChange={handleTitleChange}
+        onExportNote={handleExportNote}
+        allTags={allTags}
+        onTagsChange={handleTagsChange}
         pomodoroWidget={
           <PomodoroWidget
             paperId={id}

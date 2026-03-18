@@ -46,4 +46,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('weekly_paper_goal',      '3'),
   ('split_direction',        '"horizontal"'),
   ('default_template',       '"free-form"'),
-  ('api_key_encrypted',      'null');
+  ('api_key_encrypted',      'null'),
+  ('ai_provider',            '"claude"'),
+  ('ai_ollama_url',          '"http://localhost:11434"'),
+  ('ai_ollama_model',        '"llama3.2"');

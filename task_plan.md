@@ -9,7 +9,7 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
 - **Shell**: Electron + electron-builder
 - **Frontend**: React + Vite + Tailwind CSS
 - **Database**: SQLite via better-sqlite3
-- **AI**: Anthropic Claude API (claude-sonnet-4-20250514)
+- **AI**: Anthropic Claude API (`claude-sonnet-4-6`) + Ollama (local, provider-selectable)
 - **PDF**: pdf-parse (extraction) + pdfjs-dist (viewer)
 - **Mind map**: Markmap.js
 - **Editor**: CodeMirror 6
@@ -106,6 +106,66 @@ Notes saved as Obsidian-compatible Markdown with YAML frontmatter.
 - [x] 9.1 Configure electron-builder: NSIS (Win), DMG (Mac arm64+x64), AppImage (Linux)
 - [x] 9.2 Test build on dev machine — both arm64 + x64 DMGs built successfully
 - [x] 9.3 Write install instructions in README
+
+---
+
+## Phase 10 — Ollama Local AI Provider
+
+### Goal
+Let users run all 4 AI skills against a locally-running Ollama instance instead of (or
+alongside) the Claude API. Provider is selectable per-installation in Settings → AI Skills.
+No new npm dependencies — Ollama's REST API is called with Node's built-in `http` module.
+
+### Architecture decision
+`claudeService.js` is renamed to `aiService.js`. It gains a provider branch:
+- **`claude`** — existing Anthropic SDK path, unchanged
+- **`ollama`** — HTTP POST to `http://<ollamaUrl>/api/chat` with `"stream": false`
+
+The 4 `ai:*` IPC handlers in `main.js` call `aiService.runSkill()` — same interface, no
+changes needed there. All renderer code is unaffected.
+
+### New settings keys (added to schema.sql defaults)
+| Key | Default | Description |
+|---|---|---|
+| `ai_provider` | `'claude'` | Active provider: `'claude'` \| `'ollama'` |
+| `ai_ollama_url` | `'http://localhost:11434'` | Ollama base URL (supports remote) |
+| `ai_ollama_model` | `'llama3.2'` | Model tag to use (must be pulled in Ollama) |
+
+### Tasks
+
+#### A — Main process
+- [ ] 10.1 Rename `electron/claudeService.js` → `electron/aiService.js`; update `require` in `main.js`
+- [ ] 10.2 Add `getProvider(db)` helper (reads `ai_provider` setting)
+- [ ] 10.3 Add `callOllama(ollamaUrl, model, systemPrompt, userText, config)` function
+  - POST to `<ollamaUrl>/api/chat` with `{ model, stream: false, messages: [system, user], options: { temperature, num_predict } }`
+  - Returns `{ content, truncated }` — same shape as Claude path
+- [ ] 10.4 Branch `runSkill()` on provider: Claude path unchanged; Ollama path uses `callOllama()`
+- [ ] 10.5 Add `ollama:listModels` IPC handler — GET `<ollamaUrl>/api/tags`, return model name array
+- [ ] 10.6 Add `ollama:testConnection` IPC handler — HEAD/GET `<ollamaUrl>/`, return `{ ok, error? }`
+- [ ] 10.7 Expose `ollama.listModels` and `ollama.testConnection` in `electron/preload.js`
+- [ ] 10.8 Add 3 new default rows to `electron/schema.sql`
+
+#### B — Settings UI
+- [ ] 10.9  Add provider selector (Claude / Ollama radio toggle) at top of AI Skills section
+  - Saves `ai_provider`; shows/hides the relevant config panel below
+- [ ] 10.10 Add Ollama config panel (shown when Ollama selected):
+  - Base URL text input (default `http://localhost:11434`)
+  - Connection status badge — calls `ollama:testConnection` on mount + "Test" button
+  - Model dropdown — populated by `ollama:listModels`; "Refresh" button
+  - Saves `ai_ollama_url` and `ai_ollama_model`
+- [ ] 10.11 Rename existing "Anthropic API key" block → "Claude API" and wrap it so it is
+  only shown when Claude provider is selected
+
+#### C — Verify & polish
+- [ ] 10.12 Build verify (`vite build`)
+- [ ] 10.13 Manual smoke test: switch to Ollama, generate mind map, confirm file saved
+- [ ] 10.14 Update README with Ollama setup section
+
+### Out of scope for this phase
+- Per-skill provider override (global provider only)
+- Streaming output / progress display
+- Ollama model pulling from within the app (`ollama pull`)
+- Any SRS/scheduling for flashcards
 
 ---
 

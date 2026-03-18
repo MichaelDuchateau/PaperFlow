@@ -1,5 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import TagPill from '../shared/TagPill.jsx';
+
+// ── Inline tag picker ──────────────────────────────────────────────
+function TagPicker({ paperTagIds = [], allTags = [], onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const currentTags = allTags.filter(t => paperTagIds.includes(t.id));
+  const available   = allTags.filter(t => !paperTagIds.includes(t.id));
+
+  const add    = (id) => { onChange([...paperTagIds, id]); setOpen(false); };
+  const remove = (id) => onChange(paperTagIds.filter(x => x !== id));
+
+  return (
+    <div ref={ref} className="relative flex items-center gap-1 flex-wrap max-w-[200px]">
+      {currentTags.map(t => (
+        <TagPill key={t.id} tag={t} onClick={() => remove(t.id)}
+          className="!pr-1 gap-1" />
+      ))}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-5 h-5 flex items-center justify-center rounded-full border border-dashed border-gray-600 text-gray-500 hover:text-gray-300 hover:border-gray-400 text-xs transition-colors flex-shrink-0"
+        title="Add tag"
+      >+</button>
+      {open && available.length > 0 && (
+        <div className="absolute left-0 top-7 z-40 min-w-[140px] bg-gray-900 border border-gray-700 rounded-lg shadow-xl py-1 space-y-0.5">
+          {available.map(t => (
+            <button key={t.id} onClick={() => add(t.id)}
+              className="w-full text-left px-3 py-1.5 hover:bg-gray-800 transition-colors">
+              <TagPill tag={t} />
+            </button>
+          ))}
+        </div>
+      )}
+      {open && available.length === 0 && (
+        <div className="absolute left-0 top-7 z-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl px-3 py-2 text-xs text-gray-500 whitespace-nowrap">
+          All tags assigned
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Top bar for the Reader page.
@@ -8,7 +56,7 @@ import { useNavigate } from 'react-router-dom';
  * - Pomodoro widget stub (Phase 4 will animate it)
  * - Settings gear
  */
-export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget }) {
+export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, onExportNote, allTags = [], onTagsChange }) {
   const navigate   = useNavigate();
   const [editing,  setEditing]  = useState(false);
   const [draft,    setDraft]    = useState('');
@@ -65,6 +113,17 @@ export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget }) {
         )}
       </div>
 
+      {/* Tag picker */}
+      {onTagsChange && (
+        <div className="no-drag flex-shrink-0">
+          <TagPicker
+            paperTagIds={JSON.parse(paper?.tags || '[]')}
+            allTags={allTags}
+            onChange={onTagsChange}
+          />
+        </div>
+      )}
+
       {/* Pomodoro widget (Phase 4 replaces this stub) */}
       <div className="no-drag flex-shrink-0">
         {pomodoroWidget ?? (
@@ -77,6 +136,20 @@ export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget }) {
           </div>
         )}
       </div>
+
+      {/* Export note */}
+      {onExportNote && (
+        <button
+          onClick={onExportNote}
+          className="no-drag p-1.5 rounded hover:bg-gray-800 text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+          title="Export note as Markdown"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </button>
+      )}
 
       {/* Settings gear */}
       <button

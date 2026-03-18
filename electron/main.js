@@ -300,13 +300,13 @@ function registerIpcHandlers() {
   });
 
   // ── AI skills ─────────────────────────────────────────────────────
-  const claudeService = require('./claudeService.js');
+  const aiService = require('./aiService.js');
 
   ipcMain.handle('ai:mindmap', async (_, paperId) => {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper) throw new Error('Paper not found');
 
-    const { content, truncated } = await claudeService.runSkill(db, 'mindmap', paper.raw_text);
+    const { content, truncated } = await aiService.runSkill(db, 'mindmap', paper.raw_text);
 
     const relPath = `mindmaps/mindmap_${paperId}.md`;
     fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
@@ -319,7 +319,7 @@ function registerIpcHandlers() {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper) throw new Error('Paper not found');
 
-    const { content, truncated } = await claudeService.runSkill(db, 'summary', paper.raw_text);
+    const { content, truncated } = await aiService.runSkill(db, 'summary', paper.raw_text);
 
     // content is already clean-stringified JSON
     db.prepare('UPDATE papers SET summary = ? WHERE id = ?').run(content, paperId);
@@ -331,7 +331,7 @@ function registerIpcHandlers() {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper) throw new Error('Paper not found');
 
-    const { content, truncated } = await claudeService.runSkill(db, 'flashcards', paper.raw_text);
+    const { content, truncated } = await aiService.runSkill(db, 'flashcards', paper.raw_text);
 
     const relPath = `flashcards/flashcards_${paperId}.md`;
     fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
@@ -344,13 +344,76 @@ function registerIpcHandlers() {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
     if (!paper) throw new Error('Paper not found');
 
-    const { content, truncated } = await claudeService.runSkill(db, 'test', paper.raw_text);
+    const { content, truncated } = await aiService.runSkill(db, 'test', paper.raw_text);
 
     const relPath = `tests/test_${paperId}.md`;
     fs.writeFileSync(path.join(DATA_DIR, relPath), content, 'utf8');
     db.prepare('UPDATE papers SET test_path = ? WHERE id = ?').run(relPath, paperId);
 
     return { status: 'ok', truncated };
+  });
+
+  // ── Ollama helpers ────────────────────────────────────────────────
+  ipcMain.handle('ollama:testConnection', async () => {
+    const http   = require('http');
+    const https  = require('https');
+    const row    = db.prepare("SELECT value FROM settings WHERE key = 'ai_ollama_url'").get();
+    const base   = row ? JSON.parse(row.value) : 'http://localhost:11434';
+    return new Promise((resolve) => {
+      try {
+        const url       = new URL('/', base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     '/',
+          method:   'GET',
+        }, (res) => {
+          resolve({ ok: res.statusCode < 400 });
+        });
+        req.on('error', (e) => resolve({ ok: false, error: e.message }));
+        req.setTimeout(5000, () => { req.destroy(); resolve({ ok: false, error: 'Timeout' }); });
+        req.end();
+      } catch (e) {
+        resolve({ ok: false, error: e.message });
+      }
+    });
+  });
+
+  ipcMain.handle('ollama:listModels', async () => {
+    const http   = require('http');
+    const https  = require('https');
+    const row    = db.prepare("SELECT value FROM settings WHERE key = 'ai_ollama_url'").get();
+    const base   = row ? JSON.parse(row.value) : 'http://localhost:11434';
+    return new Promise((resolve, reject) => {
+      try {
+        const url       = new URL('/api/tags', base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     url.pathname,
+          method:   'GET',
+        }, (res) => {
+          let data = '';
+          res.on('data', chunk => { data += chunk; });
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(data);
+              const names = (parsed.models ?? []).map(m => m.name);
+              resolve(names);
+            } catch (e) {
+              reject(new Error('Failed to parse Ollama model list'));
+            }
+          });
+        });
+        req.on('error', (e) => reject(new Error(`Cannot reach Ollama: ${e.message}`)));
+        req.setTimeout(5000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.end();
+      } catch (e) {
+        reject(new Error(e.message));
+      }
+    });
   });
 
   // ── Export helpers ────────────────────────────────────────────────
@@ -369,26 +432,26 @@ function registerIpcHandlers() {
   // ── Export handlers ───────────────────────────────────────────────
   ipcMain.handle('export:note', async (_, { paperId }) => {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
-    if (!paper?.notes_path) return { error: 'No notes for this paper' };
+    if (!paper?.notes_path) return { error: 'No notes for this paper yet — open the reader and write some notes first.' };
     const res = await dialog.showSaveDialog({
       defaultPath: `${safeTitle(paper)}_notes.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (res.canceled) return { canceled: true };
     const ok = copyExport(paper.notes_path, res.filePath);
-    return ok ? { success: true } : { error: 'Notes file not found on disk' };
+    return ok ? { success: true } : { error: `Notes file not found at ${path.join(DATA_DIR, paper.notes_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
   ipcMain.handle('export:flashcards', async (_, { paperId }) => {
     const paper = db.prepare('SELECT * FROM papers WHERE id = ?').get(paperId);
-    if (!paper?.flashcards_path) return { error: 'No flashcards for this paper' };
+    if (!paper?.flashcards_path) return { error: 'No flashcards for this paper yet — generate them first via the AI action bar.' };
     const res = await dialog.showSaveDialog({
       defaultPath: `${safeTitle(paper)}_flashcards.md`,
       filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (res.canceled) return { canceled: true };
     const ok = copyExport(paper.flashcards_path, res.filePath);
-    return ok ? { success: true } : { error: 'Flashcards file not found on disk' };
+    return ok ? { success: true } : { error: `Flashcards file not found at ${path.join(DATA_DIR, paper.flashcards_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
   ipcMain.handle('export:anki', async (_, { paperId }) => {
@@ -429,7 +492,7 @@ function registerIpcHandlers() {
     });
     if (res.canceled) return { canceled: true };
     const ok = copyExport(paper.mindmap_path, res.filePath);
-    return ok ? { success: true } : { error: 'Mind map file not found on disk' };
+    return ok ? { success: true } : { error: `Mind map file not found at ${path.join(DATA_DIR, paper.mindmap_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
   ipcMain.handle('export:test', async (_, { paperId }) => {
@@ -441,7 +504,7 @@ function registerIpcHandlers() {
     });
     if (res.canceled) return { canceled: true };
     const ok = copyExport(paper.test_path, res.filePath);
-    return ok ? { success: true } : { error: 'Test file not found on disk' };
+    return ok ? { success: true } : { error: `Test file not found at ${path.join(DATA_DIR, paper.test_path)}. If you added this paper in dev mode (npm run dev) the files live under the "Electron" userData folder, not "PaperFlow".` };
   });
 
   ipcMain.handle('export:summary', async (_, { paperId }) => {

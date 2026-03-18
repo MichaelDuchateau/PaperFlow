@@ -12,6 +12,9 @@ export default function App() {
   return (
     <HashRouter>
       <div className="h-screen flex flex-col overflow-hidden bg-gray-950 text-gray-100">
+        {window.api.platform === 'darwin' && (
+          <div className="drag-region h-7 flex-shrink-0 bg-gray-950" />
+        )}
         <Routes>
           <Route path="/"                   element={<OverviewPage />} />
           <Route path="/reader/:id"         element={<ReaderPage />} />

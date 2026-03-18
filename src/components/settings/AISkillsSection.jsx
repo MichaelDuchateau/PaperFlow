@@ -69,7 +69,7 @@ function SkillPanel({ skillKey, skillSettings, skillPrompt, onSkillSave }) {
         <p className="text-sm font-semibold text-gray-100">{SKILL_LABELS[skillKey]}</p>
         <button
           onClick={() => setEnabled(v => !v)}
-          className={`relative w-10 h-5 rounded-full transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
+          className={`relative w-10 h-5 rounded-full overflow-hidden transition-colors ${enabled ? 'bg-brand-600' : 'bg-gray-700'}`}
         >
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </button>
@@ -127,20 +127,147 @@ function SkillPanel({ skillKey, skillSettings, skillPrompt, onSkillSave }) {
   );
 }
 
+// ── Ollama config panel ────────────────────────────────────────────
+function OllamaPanel({ settings }) {
+  const [url,     setUrl]     = useState(settings.ai_ollama_url   ?? 'http://localhost:11434');
+  const [model,   setModel]   = useState(settings.ai_ollama_model ?? 'llama3.2');
+  const [models,  setModels]  = useState([]);
+  const [status,  setStatus]  = useState(null); // null | 'ok' | 'error'
+  const [errMsg,  setErrMsg]  = useState('');
+  const [testing, setTesting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [saved,   setSaved]   = useState(false);
+
+  const testConnection = async () => {
+    setTesting(true);
+    setStatus(null);
+    try {
+      const result = await window.api.ollama.testConnection();
+      setStatus(result.ok ? 'ok' : 'error');
+      setErrMsg(result.error ?? '');
+    } catch (e) {
+      setStatus('error');
+      setErrMsg(e.message);
+    }
+    setTesting(false);
+  };
+
+  const refreshModels = async () => {
+    setLoading(true);
+    try {
+      const list = await window.api.ollama.listModels();
+      setModels(list);
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    await window.api.settings.set('ai_ollama_url',   url.trim());
+    await window.api.settings.set('ai_ollama_model', model.trim());
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  // Test connection on mount
+  useEffect(() => { testConnection(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-4 rounded-lg bg-gray-800/40 border border-gray-700/50 p-4">
+      <p className="text-sm font-medium text-gray-200">Ollama configuration</p>
+
+      {/* Base URL */}
+      <label className="block">
+        <span className="text-xs text-gray-400 block mb-1">Ollama base URL</span>
+        <input
+          type="text"
+          value={url}
+          onChange={e => setUrl(e.target.value)}
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-brand-500"
+          placeholder="http://localhost:11434"
+        />
+      </label>
+
+      {/* Connection status */}
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${
+          status === 'ok'    ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-700/40' :
+          status === 'error' ? 'bg-red-900/40 text-red-400 border border-red-700/40' :
+                               'bg-gray-800 text-gray-500 border border-gray-700'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            status === 'ok' ? 'bg-emerald-400' : status === 'error' ? 'bg-red-400' : 'bg-gray-600'
+          }`} />
+          {status === 'ok' ? 'Connected' : status === 'error' ? `Unreachable${errMsg ? ': ' + errMsg : ''}` : 'Unknown'}
+        </span>
+        <button
+          onClick={testConnection}
+          disabled={testing}
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-50"
+        >
+          {testing ? 'Testing…' : 'Test'}
+        </button>
+      </div>
+
+      {/* Model */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-gray-400">Model</span>
+          <button onClick={refreshModels} disabled={loading}
+            className="text-xs text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-50">
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
+        {models.length > 0 ? (
+          <select
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-brand-500"
+          >
+            {models.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        ) : (
+          <input
+            type="text"
+            value={model}
+            onChange={e => setModel(e.target.value)}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-brand-500"
+            placeholder="e.g. llama3.2"
+          />
+        )}
+        <p className="text-xs text-gray-600 mt-1">Model must be pulled in Ollama before use.</p>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+      >
+        {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
 // ── Main section ───────────────────────────────────────────────────
 export default function AISkillsSection({ settings }) {
+  const [provider,    setProvider]    = useState(settings.ai_provider ?? 'claude');
   const [apiKey,      setApiKey]      = useState('');
-  const [apiKeyMask,  setApiKeyMask]  = useState(true);  // show as ●●●●
+  const [apiKeyMask,  setApiKeyMask]  = useState(true);
   const [apiSaving,   setApiSaving]   = useState(false);
   const [apiSaved,    setApiSaved]    = useState(false);
   const [hasKey,      setHasKey]      = useState(false);
 
-  // Load whether a key is already stored
   useEffect(() => {
-    window.api.settings.getApiKey().then(k => {
-      setHasKey(!!k);
-    });
+    window.api.settings.getApiKey().then(k => { setHasKey(!!k); });
   }, []);
+
+  const handleProviderChange = async (p) => {
+    setProvider(p);
+    await window.api.settings.set('ai_provider', p);
+  };
 
   const handleSaveApiKey = async () => {
     if (!apiKey.trim()) return;
@@ -170,52 +297,77 @@ export default function AISkillsSection({ settings }) {
 
   return (
     <div className="space-y-6">
-      {/* API key */}
+      {/* Provider selector */}
       <div>
-        <p className="text-sm font-medium text-gray-200 mb-1">Anthropic API key</p>
-        <p className="text-xs text-gray-500 mb-3">
-          Stored encrypted using your OS keychain via <code className="text-gray-400">safeStorage</code>.
-          {hasKey && <span className="ml-2 text-emerald-500">✓ Key is stored</span>}
-        </p>
+        <p className="text-sm font-medium text-gray-200 mb-2">AI Provider</p>
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type={apiKeyMask ? 'password' : 'text'}
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSaveApiKey(); }}
-              placeholder={hasKey ? '●●●●●●●●  (enter new key to replace)' : 'sk-ant-…'}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-brand-500 transition-colors pr-10"
-            />
+          {[['claude', 'Claude (Anthropic API)'], ['ollama', 'Ollama (local)']].map(([val, label]) => (
             <button
-              onClick={() => setApiKeyMask(v => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-              tabIndex={-1}
+              key={val}
+              onClick={() => handleProviderChange(val)}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm border transition-colors ${
+                provider === val
+                  ? 'bg-brand-600/20 border-brand-500 text-brand-300'
+                  : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+              }`}
             >
-              {apiKeyMask ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              )}
+              {label}
             </button>
-          </div>
-          <button
-            onClick={handleSaveApiKey}
-            disabled={apiSaving || !apiKey.trim()}
-            className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-sm rounded-lg transition-colors flex-shrink-0"
-          >
-            {apiSaving ? 'Saving…' : apiSaved ? '✓ Saved' : 'Save key'}
-          </button>
+          ))}
         </div>
       </div>
+
+      {/* Claude API key (shown when Claude selected) */}
+      {provider === 'claude' && (
+        <div>
+          <p className="text-sm font-medium text-gray-200 mb-1">Anthropic API key</p>
+          <p className="text-xs text-gray-500 mb-3">
+            Stored encrypted using your OS keychain via <code className="text-gray-400">safeStorage</code>.
+            {hasKey && <span className="ml-2 text-emerald-500">✓ Key is stored</span>}
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={apiKeyMask ? 'password' : 'text'}
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSaveApiKey(); }}
+                placeholder={hasKey ? '●●●●●●●●  (enter new key to replace)' : 'sk-ant-…'}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-brand-500 transition-colors pr-10"
+              />
+              <button
+                onClick={() => setApiKeyMask(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                tabIndex={-1}
+              >
+                {apiKeyMask ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <button
+              onClick={handleSaveApiKey}
+              disabled={apiSaving || !apiKey.trim()}
+              className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-sm rounded-lg transition-colors flex-shrink-0"
+            >
+              {apiSaving ? 'Saving…' : apiSaved ? '✓ Saved' : 'Save key'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ollama config (shown when Ollama selected) */}
+      {provider === 'ollama' && <OllamaPanel settings={settings} />}
 
       {/* Per-skill panels */}
       <div className="space-y-4">

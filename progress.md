@@ -132,6 +132,22 @@
 
 ---
 
+### Session 10 — 2026-03-18 (Issues #1–#6 + Phase 10 complete)
+**Done:**
+- `src/components/reader/PomodoroWidget.jsx` — added `overflow-hidden` to toggle container; removed standalone gear button; made ring+time area clickable to open settings popover (fix #1, #3)
+- `src/components/settings/PomodoroSection.jsx` — added `overflow-hidden` to toggle container (fix #1)
+- `src/components/settings/AISkillsSection.jsx` — added `overflow-hidden` to toggle container (fix #1); full rewrite to add provider selector (Claude/Ollama radio), Claude API key panel shown conditionally, Ollama config panel (URL input, connection status badge, model dropdown/input, save) (fix #1, phase 10C)
+- `electron/preload.js` — exposed `platform: process.platform`; added `ollama: { testConnection, listModels }` (fix #2, phase 10B)
+- `src/App.jsx` — macOS-only 28px drag-region spacer above routes so traffic lights don't overlap content (fix #2)
+- `src/components/reader/ReaderTopBar.jsx` — added `onExportNote` prop + download icon button; added `TagPicker` inline component + `allTags`/`onTagsChange` props; tag pills shown with × to remove, "+" dropdown to add (fix #4, fix #6)
+- `src/pages/ReaderPage.jsx` — loads `window.api.tags.getAll()` on mount; `handleTagsChange` persists via `papers.update`; `handleExportNote` calls `export.note` with toast; passes all new props to `ReaderTopBar` (fix #4, fix #6)
+- `electron/main.js` — improved error messages on missing file exports to include full path + dev/prod mismatch hint; added `ollama:testConnection` and `ollama:listModels` IPC handlers; renamed `claudeService` → `aiService` (fix #5, phase 10B)
+- `electron/aiService.js` — new file: `getProvider(db)` helper; `callOllama()` using Node built-in `http`/`https`; `runSkill()` branches on `'claude'` vs `'ollama'` provider; identical interface as before (phase 10A)
+- `electron/schema.sql` — added 3 default settings: `ai_provider='claude'`, `ai_ollama_url`, `ai_ollama_model` (phase 10B)
+- `vite build` — passes cleanly
+
+---
+
 ## Phase Completion Tracker
 
 | Phase | Status | Notes |
@@ -145,6 +161,8 @@
 | Phase 7 — Export service | ✅ Complete | |
 | Phase 8 — AI skills | ✅ Complete | claude-sonnet-4-6, all 4 skills |
 | Phase 9 — Installer | ✅ Complete | DMG arm64+x64 verified |
+| Phase 10 — Ollama provider | ✅ Complete | aiService.js, Settings UI, IPC handlers |
+| Issues #1–#6 | ✅ Fixed | toggle overflow, macOS titlebar, gear dupe, export, errors, tags |
 
 ---
 

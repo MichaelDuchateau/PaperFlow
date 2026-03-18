@@ -59,7 +59,7 @@ function SettingsPopover({ workMin, breakMin, enabled, onSave, onClose }) {
       <label className="flex items-center justify-between">
         <span className="text-xs text-gray-400">Enable timer</span>
         <button onClick={() => setEn(v => !v)}
-          className={`relative w-9 h-5 rounded-full transition-colors ${en ? 'bg-brand-600' : 'bg-gray-700'}`}>
+          className={`relative w-9 h-5 rounded-full overflow-hidden transition-colors ${en ? 'bg-brand-600' : 'bg-gray-700'}`}>
           <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${en ? 'translate-x-4' : 'translate-x-0.5'}`} />
         </button>
       </label>
@@ -236,8 +236,9 @@ export default function PomodoroWidget({ paperId, settings = {}, onSettingsChang
   return (
     <>
       <div className="relative flex items-center gap-1">
-        {/* Ring + time */}
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-800 border border-gray-700">
+        {/* Ring + time (click to open settings) */}
+        <button onClick={() => setShowSettings(v => !v)} title="Pomodoro settings"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-800 border border-gray-700 hover:border-gray-600 transition-colors">
           <Ring progress={progress} size={22} color={ringColor} />
           <span className={`text-xs font-mono font-medium tabular-nums ${
             isBreak ? 'text-amber-400' : isRunning ? 'text-brand-300' : 'text-gray-400'
@@ -245,7 +246,7 @@ export default function PomodoroWidget({ paperId, settings = {}, onSettingsChang
             {fmt(timeLeft)}
           </span>
           {isBreak && <span className="text-xs text-amber-500">Break</span>}
-        </div>
+        </button>
 
         {/* Controls */}
         {isIdle ? (
@@ -288,16 +289,6 @@ export default function PomodoroWidget({ paperId, settings = {}, onSettingsChang
             </button>
           </>
         ) : null}
-
-        {/* Settings gear */}
-        <button onClick={() => setShowSettings(v => !v)} title="Pomodoro settings"
-          className="p-1.5 rounded-md text-gray-600 hover:text-gray-400 transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        </button>
 
         {showSettings && (
           <SettingsPopover workMin={workMin} breakMin={breakMin} enabled={enabled}

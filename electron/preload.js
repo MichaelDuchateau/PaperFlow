@@ -7,6 +7,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 // File I/O and SQLite live exclusively in the main process.
 contextBridge.exposeInMainWorld('api', {
 
+  platform: process.platform,
+
   papers: {
     getAll:       ()          => ipcRenderer.invoke('papers:getAll'),
     getById:      (id)        => ipcRenderer.invoke('papers:getById', id),
@@ -65,6 +67,11 @@ contextBridge.exposeInMainWorld('api', {
     mindmap:    (paperId) => ipcRenderer.invoke('export:mindmap',    { paperId }),
     test:       (paperId) => ipcRenderer.invoke('export:test',       { paperId }),
     summary:    (paperId) => ipcRenderer.invoke('export:summary',    { paperId }),
+  },
+
+  ollama: {
+    testConnection: () => ipcRenderer.invoke('ollama:testConnection'),
+    listModels:     () => ipcRenderer.invoke('ollama:listModels'),
   },
 
   dialog: {
