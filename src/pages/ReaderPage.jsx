@@ -11,22 +11,45 @@ const LEFT_MIN = 25; // percent
 const LEFT_MAX = 80;
 const LEFT_DEFAULT = 55;
 
+// ── Download icon ──────────────────────────────────────────────────
+function DownloadIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  );
+}
+
 // ── Tab bar for left panel ─────────────────────────────────────────
-function LeftTabs({ active, onChange, tabs }) {
+function LeftTabs({ active, onChange, tabs, onExport }) {
   return (
     <div className="flex border-b border-gray-800 bg-gray-900 flex-shrink-0 overflow-x-auto">
       {tabs.map(t => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`flex-shrink-0 px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-            active === t.id
-              ? 'border-brand-500 text-brand-400'
-              : 'border-transparent text-gray-500 hover:text-gray-300'
-          }`}
-        >
-          {t.label}
-        </button>
+        <div key={t.id} className="relative flex-shrink-0 flex items-stretch">
+          <button
+            onClick={() => onChange(t.id)}
+            className={`flex-shrink-0 px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
+              active === t.id
+                ? 'border-brand-500 text-brand-400'
+                : 'border-transparent text-gray-500 hover:text-gray-300'
+            } ${t.exportKey ? 'pr-1' : 'px-4'}`}
+          >
+            {t.label}
+          </button>
+          {t.exportKey && (
+            <button
+              onClick={e => { e.stopPropagation(); onExport?.(t.exportKey); }}
+              title={`Download ${t.label}`}
+              className={`flex items-center pr-2 py-2 -mb-px border-b-2 transition-colors ${
+                active === t.id
+                  ? 'border-brand-500 text-brand-600 hover:text-brand-400'
+                  : 'border-transparent text-gray-700 hover:text-gray-400'
+              }`}
+            >
+              <DownloadIcon />
+            </button>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -207,12 +230,12 @@ export default function ReaderPage() {
     window.getSelection()?.removeAllRanges();
   }, [selectedPdfText]);
 
-  // ── Export note ───────────────────────────────────────────────
-  const handleExportNote = useCallback(async () => {
+  // ── Export tab content ────────────────────────────────────────
+  const handleExportTab = useCallback(async (exportKey) => {
     try {
-      const result = await window.api.export.note(id);
+      const result = await window.api.export[exportKey](id);
       if (result?.error) showToast('error', result.error);
-      else showToast('success', 'Note exported.');
+      else showToast('success', `${exportKey.charAt(0).toUpperCase() + exportKey.slice(1)} exported.`);
     } catch (err) {
       showToast('error', err.message);
     }
@@ -285,7 +308,6 @@ export default function ReaderPage() {
       <ReaderTopBar
         paper={paper}
         onTitleChange={handleTitleChange}
-        onExportNote={handleExportNote}
         allTags={allTags}
         onTagsChange={handleTagsChange}
         pomodoroWidget={
@@ -310,12 +332,13 @@ export default function ReaderPage() {
           <LeftTabs
             active={leftTab}
             onChange={setLeftTab}
+            onExport={handleExportTab}
             tabs={[
               { id: 'pdf',        label: 'PDF' },
-              ...(paper?.mindmap_path    ? [{ id: 'mindmap',    label: 'Mind Map'  }] : []),
-              ...(paper?.summary         ? [{ id: 'summary',    label: 'Summary'   }] : []),
-              ...(paper?.flashcards_path ? [{ id: 'flashcards', label: 'Flashcards'}] : []),
-              ...(paper?.test_path       ? [{ id: 'test',       label: 'Test'      }] : []),
+              ...(paper?.mindmap_path    ? [{ id: 'mindmap',    label: 'Mind Map',   exportKey: 'mindmap'    }] : []),
+              ...(paper?.summary         ? [{ id: 'summary',    label: 'Summary',    exportKey: 'summary'    }] : []),
+              ...(paper?.flashcards_path ? [{ id: 'flashcards', label: 'Flashcards', exportKey: 'flashcards' }] : []),
+              ...(paper?.test_path       ? [{ id: 'test',       label: 'Test',       exportKey: 'test'       }] : []),
               ...customOutputs.map(o => ({ id: `custom_${o.skill_id}`, label: o.skill_name })),
             ]}
           />

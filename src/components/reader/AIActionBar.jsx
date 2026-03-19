@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const SKILLS = [
-  { key: 'mindmap',    label: 'Mind Map',   icon: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6-10l6-3m6 16l-6 3V7l6-3v16z' },
-  { key: 'summary',    label: 'Summary',    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-  { key: 'flashcards', label: 'Flashcards', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-  { key: 'test',       label: 'Test',       icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
+  { key: 'mindmap',    label: 'Mind Map'   },
+  { key: 'summary',    label: 'Summary'    },
+  { key: 'flashcards', label: 'Flashcards' },
+  { key: 'test',       label: 'Test'       },
 ];
 
 function Spinner() {
   return (
-    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+    <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
     </svg>
@@ -17,76 +17,94 @@ function Spinner() {
 }
 
 export default function AIActionBar({ paper, generating = {}, onGenerate, customSkills = [], customGenerating = {}, onCustomGenerate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
   const anyGenerating = Object.values(generating).some(Boolean) || Object.values(customGenerating).some(Boolean);
+  const activeLabel   = anyGenerating
+    ? [...SKILLS.map(s => generating[s.key] && s.label), ...customSkills.map(s => customGenerating[s.id] && s.name)].find(Boolean)
+    : null;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSkill = (fn) => {
+    if (anyGenerating) return;
+    setOpen(false);
+    fn();
+  };
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-t border-gray-800 bg-gray-900 flex-shrink-0">
-      <span className="text-xs text-gray-600 mr-1">Generate:</span>
+      <div ref={ref} className="relative">
+        <button
+          onClick={() => !anyGenerating && setOpen(o => !o)}
+          disabled={anyGenerating}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs border transition-colors ${
+            anyGenerating
+              ? 'bg-brand-900/40 border-brand-700 text-brand-300 cursor-wait'
+              : open
+              ? 'bg-gray-700 border-gray-600 text-gray-200'
+              : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+          }`}
+        >
+          {anyGenerating ? <Spinner /> : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          )}
+          {anyGenerating ? `Generating ${activeLabel}…` : 'Generate'}
+          {!anyGenerating && (
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </button>
 
-      {SKILLS.map(({ key, label, icon }) => {
-        const isGenerating = generating[key];
-        // Indicate if content already exists (dim the button differently)
-        const exists = !!(
-          key === 'mindmap'    ? paper?.mindmap_path    :
-          key === 'summary'    ? paper?.summary         :
-          key === 'flashcards' ? paper?.flashcards_path :
-          key === 'test'       ? paper?.test_path       : false
-        );
+        {open && (
+          <div className="absolute left-0 bottom-9 z-30 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1">
+            {/* Built-in skills */}
+            {SKILLS.map(({ key, label }) => {
+              const exists = !!(
+                key === 'mindmap'    ? paper?.mindmap_path    :
+                key === 'summary'    ? paper?.summary         :
+                key === 'flashcards' ? paper?.flashcards_path :
+                key === 'test'       ? paper?.test_path       : false
+              );
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleSkill(() => onGenerate?.(key))}
+                  className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center justify-between"
+                >
+                  {label}
+                  {exists && <span className="text-gray-600 text-[10px]">regenerate</span>}
+                </button>
+              );
+            })}
 
-        return (
-          <button
-            key={key}
-            onClick={() => !anyGenerating && onGenerate?.(key)}
-            disabled={anyGenerating}
-            title={exists ? `Regenerate ${label}` : `Generate ${label}`}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors border ${
-              isGenerating
-                ? 'bg-brand-900/40 border-brand-700 text-brand-300 cursor-wait'
-                : anyGenerating
-                ? 'opacity-40 cursor-not-allowed bg-gray-800 border-gray-700 text-gray-500'
-                : exists
-                ? 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-                : 'bg-brand-600/20 border-brand-700/50 text-brand-300 hover:bg-brand-600/30'
-            }`}
-          >
-            {isGenerating ? (
-              <Spinner />
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
-              </svg>
+            {/* Custom skills */}
+            {customSkills.filter(s => s.enabled).length > 0 && (
+              <>
+                <div className="border-t border-gray-700 my-1" />
+                {customSkills.filter(s => s.enabled).map(skill => (
+                  <button
+                    key={skill.id}
+                    onClick={() => handleSkill(() => onCustomGenerate?.(skill.id))}
+                    className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                  >
+                    {skill.name}
+                  </button>
+                ))}
+              </>
             )}
-            {isGenerating ? `${label}…` : label}
-          </button>
-        );
-      })}
-
-      {/* Custom skill buttons */}
-      {customSkills.filter(s => s.enabled).map(skill => {
-        const isGenerating = customGenerating[skill.id];
-        return (
-          <button
-            key={skill.id}
-            onClick={() => !anyGenerating && onCustomGenerate?.(skill.id)}
-            disabled={anyGenerating}
-            title={`Run: ${skill.name}`}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-colors border ${
-              isGenerating
-                ? 'bg-brand-900/40 border-brand-700 text-brand-300 cursor-wait'
-                : anyGenerating
-                ? 'opacity-40 cursor-not-allowed bg-gray-800 border-gray-700 text-gray-500'
-                : 'bg-gray-800/60 border-gray-700/60 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
-            }`}
-          >
-            {isGenerating ? <Spinner /> : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            )}
-            {isGenerating ? `${skill.name}…` : skill.name}
-          </button>
-        );
-      })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -61,7 +61,7 @@ function TagPicker({ paperTagIds = [], allTags = [], onChange }) {
  * - Pomodoro widget stub (Phase 4 will animate it)
  * - Settings gear
  */
-export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, onExportNote, allTags = [], onTagsChange }) {
+export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, allTags = [], onTagsChange }) {
   const navigate   = useNavigate();
   const [editing,  setEditing]  = useState(false);
   const [draft,    setDraft]    = useState('');
@@ -141,20 +141,6 @@ export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, onE
           </div>
         )}
       </div>
-
-      {/* Export note */}
-      {onExportNote && (
-        <button
-          onClick={onExportNote}
-          className="no-drag p-1.5 rounded hover:bg-gray-800 text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
-          title="Export note as Markdown"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-        </button>
-      )}
 
       {/* Settings gear */}
       <button
