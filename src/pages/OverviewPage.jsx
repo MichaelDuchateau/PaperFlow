@@ -8,7 +8,6 @@ export default function OverviewPage() {
   const [papers,        setPapers]        = useState([]);
   const [tags,          setTags]          = useState([]);
   const [settings,      setSettings]      = useState({});
-  const [pomodoroStats, setPomodoroStats] = useState({ today: 0, total: 0 });
   const [toThinkItems,  setToThinkItems]  = useState([]);
   const [tagFilter,     setTagFilter]     = useState('all');
   const [loading,       setLoading]       = useState(true);
@@ -18,17 +17,15 @@ export default function OverviewPage() {
   // ── Data loading ───────────────────────────────────────────────
   const refresh = useCallback(async () => {
     try {
-      const [p, t, s, ps, tt] = await Promise.all([
+      const [p, t, s, tt] = await Promise.all([
         window.api.papers.getAll(),
         window.api.tags.getAll(),
         window.api.settings.getAll(),
-        window.api.pomodoro.stats(),
         window.api.notes.getToThink(),
       ]);
       setPapers(p ?? []);
       setTags(t ?? []);
       setSettings(s ?? {});
-      setPomodoroStats(ps ?? { today: 0, total: 0 });
       setToThinkItems(tt ?? []);
     } catch (err) {
       showToast('error', `Failed to load data: ${err.message}`);
@@ -102,7 +99,6 @@ export default function OverviewPage() {
         papers={papers}
         tags={tags}
         settings={settings}
-        pomodoroStats={pomodoroStats}
         toThinkItems={toThinkItems}
       />
 

@@ -165,6 +165,84 @@ Implement chunked summarisation in v2.
 
 ---
 
+---
+
+## Chandra OCR v2 — Integration Research
+
+**Package**: `chandra-ocr` (Python, PyPI) — NOT a JS library. Cannot be imported directly.
+**Model**: `datalab-to/chandra-ocr-2` on HuggingFace. Requires GPU for local inference.
+**Hosted API**: `https://www.datalab.to/` — REST endpoint, requires free API key.
+**CLI**: `chandra input.pdf ./output --format md` — produces per-page Markdown files.
+
+### Integration decision for Electron
+Use the **Datalab hosted REST API** (not the local CLI or Python package):
+- No Python dependency for end users
+- Simple HTTPS calls from Node (same pattern as Claude API)
+- API key stored via `safeStorage` (mirrors existing Claude key handling)
+- Free tier available; link in settings for key signup
+
+### Datalab API endpoint (inferred from docs + chandra-ocr source)
+```
+POST https://www.datalab.to/api/v1/marker
+Headers: { X-Api-Key: <key>, Content-Type: application/json }
+Body: { file: <base64 PDF>, langs: null, force_ocr: false, output_format: "markdown" }
+Response: { markdown: "...", pages: N, ... }
+```
+Verify exact endpoint in Datalab docs before implementation — may differ.
+
+### Chandra v2 vs v1
+- v2 released 2026-03-18 (tag `v0.2.0`): improved math, tables, multilingual, layout
+- Model: `datalab-to/chandra-ocr-2` (HF)
+- For hosted API, version is managed server-side — always latest
+
+### Fallback chain
+1. If `chandra_api_key_encrypted` set → use Datalab API → store in `ocr_text`
+2. If no key → use existing `raw_text` from `pdf-parse` (always available, stored on add)
+3. Toggle in Reader shows `ocr_text` when available, otherwise `raw_text`
+
+---
+
+## Ollama REST API Reference (from ollama-ui research)
+
+Base URL: `http://localhost:11434` (configurable via `ai_ollama_url` setting)
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/version` | GET | `{ version: string }` — also used as health check |
+| `/api/tags` | GET | `{ models: [{ name, size, modified_at, details: { family, parameter_size, quantization_level } }] }` |
+| `/api/ps` | GET | `{ models: [{ name, size, size_vram }] }` — currently loaded in VRAM |
+| `/api/show` | POST `{ model }` | `{ modelfile, parameters, template }` |
+| `/api/delete` | DELETE `{ model }` | 200 OK on success |
+| `/api/pull` | POST `{ model, stream: true }` | NDJSON stream: `{ status, completed?, total? }` |
+
+### Ollama server start/stop
+- Start: `spawn('ollama', ['serve'])` — on macOS/Linux, `ollama` must be on PATH
+- Stop: `.kill()` on the spawned ChildProcess
+- Track process in a `let ollamaProcess` global in `main.js`
+- After spawn, poll `/api/version` up to 3× (500ms apart) to confirm ready
+- Windows note: `ollama serve` may already run as a system tray process — `startServer` should check `ollama:status` first and skip spawn if already running
+
+### Pull progress streaming pattern
+```js
+// main.js
+ipcMain.handle('ollama:pullModel', async (event, name) => {
+  // stream response line by line
+  for await (const chunk of streamOllamaPull(url, name)) {
+    event.sender.send('ollama:pullProgress', chunk);
+  }
+  return { ok: true };
+});
+
+// preload.js
+ollama: {
+  pullModel: (name) => ipcRenderer.invoke('ollama:pullModel', name),
+  onPullProgress: (cb) => ipcRenderer.on('ollama:pullProgress', (_, data) => cb(data)),
+  offPullProgress: (cb) => ipcRenderer.removeListener('ollama:pullProgress', cb),
+}
+```
+
+---
+
 ## Errors & Lessons Learned
 
 ### ELECTRON_RUN_AS_NODE=1 shadows built-in `electron` module

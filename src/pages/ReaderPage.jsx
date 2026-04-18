@@ -4,8 +4,8 @@ import ReaderTopBar    from '../components/reader/ReaderTopBar.jsx';
 import PDFViewer       from '../components/reader/PDFViewer.jsx';
 import MindMapViewer   from '../components/reader/MindMapViewer.jsx';
 import NotesEditor     from '../components/reader/NotesEditor.jsx';
-import AIActionBar     from '../components/reader/AIActionBar.jsx';
-import PomodoroWidget  from '../components/reader/PomodoroWidget.jsx';
+import AIActionBar        from '../components/reader/AIActionBar.jsx';
+import ExtractedTextPane  from '../components/reader/ExtractedTextPane.jsx';
 
 const LEFT_MIN = 25; // percent
 const LEFT_MAX = 80;
@@ -145,6 +145,7 @@ export default function ReaderPage() {
   const [settings,          setSettings]          = useState({});
   const [allTags,           setAllTags]            = useState([]);
   const [leftTab,           setLeftTab]            = useState('pdf');
+  const [viewMode,          setViewMode]           = useState('pdf'); // 'pdf' | 'text'
   const [leftWidth,         setLeftWidth]          = useState(LEFT_DEFAULT);
   const [generating,        setGenerating]         = useState({ mindmap: false, summary: false, flashcards: false, test: false });
   const [customSkills,      setCustomSkills]       = useState([]);
@@ -184,13 +185,6 @@ export default function ReaderPage() {
     setPaper(p);
   }, [id]);
 
-  // ── Settings change (used by PomodoroWidget) ──────────────────
-  const handleSettingsChange = useCallback(async (updates) => {
-    for (const [key, value] of Object.entries(updates)) {
-      await window.api.settings.set(key, value);
-    }
-    setSettings(prev => ({ ...prev, ...updates }));
-  }, []);
 
   // ── Tag update ────────────────────────────────────────────────
   const handleTagsChange = useCallback(async (newTagIds) => {
@@ -310,15 +304,6 @@ export default function ReaderPage() {
         onTitleChange={handleTitleChange}
         allTags={allTags}
         onTagsChange={handleTagsChange}
-        pomodoroWidget={
-          settings.pomodoro_enabled !== false ? (
-            <PomodoroWidget
-              paperId={id}
-              settings={settings}
-              onSettingsChange={handleSettingsChange}
-            />
-          ) : null
-        }
       />
 
       {/* Two-panel area */}
@@ -343,7 +328,24 @@ export default function ReaderPage() {
             ]}
           />
           <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
-            {leftTab === 'pdf'        && <PDFViewer paperId={id} onTextSelected={handlePdfTextSelected} />}
+            {leftTab === 'pdf' && (
+              <>
+                <div className="flex items-center justify-center gap-1 py-1 bg-gray-950 border-b border-gray-800 flex-shrink-0">
+                  <button
+                    onClick={() => setViewMode('pdf')}
+                    className={`px-3 py-0.5 rounded text-xs font-medium transition-colors ${viewMode === 'pdf' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  >PDF</button>
+                  <button
+                    onClick={() => setViewMode('text')}
+                    className={`px-3 py-0.5 rounded text-xs font-medium transition-colors ${viewMode === 'text' ? 'bg-brand-600 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                  >Text</button>
+                </div>
+                {viewMode === 'pdf'
+                  ? <PDFViewer paperId={id} onTextSelected={handlePdfTextSelected} />
+                  : <ExtractedTextPane rawText={paper?.raw_text} />
+                }
+              </>
+            )}
             {leftTab === 'mindmap'    && <MindMapViewer paperId={id} paper={paper} onGenerate={handleGenerate} generating={generating.mindmap} />}
             {leftTab === 'summary'    && <SummaryPane summary={paper?.summary} />}
             {leftTab === 'flashcards' && <MarkdownPane paperId={id} type="flashcards" />}

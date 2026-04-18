@@ -6,6 +6,7 @@ const fs   = require('fs');
 
 // ── Globals ────────────────────────────────────────────────────────
 let db;
+let ollamaProcess = null;
 const isDev    = !app.isPackaged;
 const USER_DATA = app.getPath('userData');
 const DATA_DIR  = path.join(USER_DATA, 'data');
@@ -207,24 +208,6 @@ function registerIpcHandlers() {
     } catch {
       return null;
     }
-  });
-
-  // ── Pomodoro ─────────────────────────────────────────────────────
-  ipcMain.handle('pomodoro:log', (_, session) => {
-    const { v4: uuidv4 } = require('uuid');
-    const id = uuidv4();
-    db.prepare(`
-      INSERT INTO pomodoro_sessions (id, paper_id, duration_minutes, started_at, ended_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, session.paperId || null, session.durationMinutes, session.startedAt, session.endedAt);
-    return { success: true };
-  });
-
-  ipcMain.handle('pomodoro:stats', () => {
-    const today    = new Date().toISOString().split('T')[0];
-    const todayRow = db.prepare("SELECT COUNT(*) AS count FROM pomodoro_sessions WHERE started_at LIKE ?").get(`${today}%`);
-    const totalRow = db.prepare('SELECT COUNT(*) AS count FROM pomodoro_sessions').get();
-    return { today: todayRow.count, total: totalRow.count };
   });
 
   // ── Notes ────────────────────────────────────────────────────────
@@ -674,5 +657,204 @@ function registerIpcHandlers() {
     const filePath = path.join(DATA_DIR, 'templates', `${safeName}.md`);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     return { success: true };
+  });
+
+  // ── Ollama management ─────────────────────────────────────────────
+
+  function getOllamaBase() {
+    const http  = require('http');
+    const https = require('https');
+    const row   = db.prepare("SELECT value FROM settings WHERE key = 'ai_ollama_url'").get();
+    let base    = 'http://localhost:11434';
+    if (row?.value) {
+      try { base = JSON.parse(row.value); } catch { base = row.value; }
+    }
+    return { base: base.replace(/\/$/, ''), http, https };
+  }
+
+  function ollamaGet(urlPath) {
+    const { base, http, https } = getOllamaBase();
+    return new Promise((resolve, reject) => {
+      try {
+        const url       = new URL(urlPath, base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     url.pathname,
+          method:   'GET',
+        }, (res) => {
+          let data = '';
+          res.on('data', c => { data += c; });
+          res.on('end', () => {
+            if (res.statusCode >= 400) return reject(new Error(`Ollama ${res.statusCode}`));
+            try { resolve(JSON.parse(data)); } catch { resolve(data); }
+          });
+        });
+        req.on('error', e => reject(new Error(e.message)));
+        req.setTimeout(8000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.end();
+      } catch (e) {
+        reject(new Error(e.message));
+      }
+    });
+  }
+
+  function ollamaPost(urlPath, body) {
+    const { base, http, https } = getOllamaBase();
+    return new Promise((resolve, reject) => {
+      try {
+        const url       = new URL(urlPath, base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const payload   = JSON.stringify(body);
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     url.pathname,
+          method:   'POST',
+          headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        }, (res) => {
+          let data = '';
+          res.on('data', c => { data += c; });
+          res.on('end', () => {
+            if (res.statusCode >= 400) return reject(new Error(`Ollama ${res.statusCode}: ${data}`));
+            try { resolve(JSON.parse(data)); } catch { resolve(data); }
+          });
+        });
+        req.on('error', e => reject(new Error(e.message)));
+        req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.write(payload);
+        req.end();
+      } catch (e) {
+        reject(new Error(e.message));
+      }
+    });
+  }
+
+  function ollamaDelete(urlPath, body) {
+    const { base, http, https } = getOllamaBase();
+    return new Promise((resolve, reject) => {
+      try {
+        const url       = new URL(urlPath, base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const payload   = JSON.stringify(body);
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     url.pathname,
+          method:   'DELETE',
+          headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        }, (res) => {
+          let data = '';
+          res.on('data', c => { data += c; });
+          res.on('end', () => {
+            if (res.statusCode >= 400) return reject(new Error(`Ollama ${res.statusCode}: ${data}`));
+            resolve({ ok: true });
+          });
+        });
+        req.on('error', e => reject(new Error(e.message)));
+        req.setTimeout(10000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.write(payload);
+        req.end();
+      } catch (e) {
+        reject(new Error(e.message));
+      }
+    });
+  }
+
+  ipcMain.handle('ollama:status', async () => {
+    try {
+      const data = await ollamaGet('/api/version');
+      return { running: true, version: data.version ?? 'unknown' };
+    } catch {
+      return { running: false };
+    }
+  });
+
+  ipcMain.handle('ollama:startServer', async () => {
+    if (ollamaProcess && !ollamaProcess.killed) return { ok: true, alreadyRunning: true };
+    const { spawn } = require('child_process');
+    try {
+      ollamaProcess = spawn('ollama', ['serve'], {
+        detached: false,
+        stdio:    'ignore',
+        shell:    process.platform === 'win32',
+      });
+      ollamaProcess.on('exit', () => { ollamaProcess = null; });
+      // poll up to 3× to confirm ready
+      for (let i = 0; i < 3; i++) {
+        await new Promise(r => setTimeout(r, 700));
+        try { await ollamaGet('/api/version'); return { ok: true }; } catch { /* not yet */ }
+      }
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('ollama:stopServer', async () => {
+    if (ollamaProcess && !ollamaProcess.killed) {
+      ollamaProcess.kill();
+      ollamaProcess = null;
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle('ollama:listModelsFull', async () => {
+    const data = await ollamaGet('/api/tags');
+    return data.models ?? [];
+  });
+
+  ipcMain.handle('ollama:listRunning', async () => {
+    const data = await ollamaGet('/api/ps');
+    return data.models ?? [];
+  });
+
+  ipcMain.handle('ollama:showModel', async (_, name) => {
+    return ollamaPost('/api/show', { model: name });
+  });
+
+  ipcMain.handle('ollama:deleteModel', async (_, name) => {
+    return ollamaDelete('/api/delete', { model: name });
+  });
+
+  ipcMain.handle('ollama:pullModel', async (event, name) => {
+    const { base, http, https } = getOllamaBase();
+    return new Promise((resolve, reject) => {
+      try {
+        const url       = new URL('/api/pull', base);
+        const transport = url.protocol === 'https:' ? https : http;
+        const payload   = JSON.stringify({ model: name, stream: true });
+        const req = transport.request({
+          hostname: url.hostname,
+          port:     url.port || (url.protocol === 'https:' ? 443 : 80),
+          path:     url.pathname,
+          method:   'POST',
+          headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        }, (res) => {
+          let buf = '';
+          res.on('data', chunk => {
+            buf += chunk;
+            const lines = buf.split('\n');
+            buf = lines.pop();
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const parsed = JSON.parse(line);
+                if (!event.sender.isDestroyed()) event.sender.send('ollama:pullProgress', parsed);
+                if (parsed.status === 'success') resolve({ ok: true });
+              } catch { /* malformed line */ }
+            }
+          });
+          res.on('end', () => resolve({ ok: true }));
+          res.on('error', e => reject(new Error(e.message)));
+        });
+        req.on('error', e => reject(new Error(e.message)));
+        req.write(payload);
+        req.end();
+      } catch (e) {
+        reject(new Error(e.message));
+      }
+    });
   });
 }

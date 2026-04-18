@@ -172,7 +172,6 @@ tags: []
 status: ${paper.status || 'unread'}
 reviewer: "${reviewerName.replace(/"/g, '\\"')}"
 added: ${date}
-pomodoros: 0
 ---
 
 # ${title || paper.title}

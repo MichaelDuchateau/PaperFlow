@@ -27,17 +27,13 @@ function NumStepper({ label, hint, value, onChange, min = 0, max = 50 }) {
 }
 
 export default function GoalsSection({ settings, onSave }) {
-  const [dailyPomodoros, setDailyPomodoros] = useState(settings.goal_daily_pomodoros ?? 8);
-  const [weeklyPapers,   setWeeklyPapers]   = useState(settings.goal_weekly_papers   ?? 3);
-  const [saving,         setSaving]         = useState(false);
-  const [saved,          setSaved]          = useState(false);
+  const [weeklyPapers, setWeeklyPapers] = useState(settings.goal_weekly_papers ?? 3);
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({
-      goal_daily_pomodoros: dailyPomodoros,
-      goal_weekly_papers:   weeklyPapers,
-    });
+    await onSave({ goal_weekly_papers: weeklyPapers });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -45,14 +41,6 @@ export default function GoalsSection({ settings, onSave }) {
 
   return (
     <div className="space-y-0 divide-y divide-gray-800/60">
-      <NumStepper
-        label="Daily Pomodoro goal"
-        hint="Sessions to complete each day (shown in dashboard)"
-        value={dailyPomodoros}
-        onChange={setDailyPomodoros}
-        min={0}
-        max={20}
-      />
       <NumStepper
         label="Weekly paper goal"
         hint="Papers to finish reading per week"

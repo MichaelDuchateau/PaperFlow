@@ -34,11 +34,6 @@ contextBridge.exposeInMainWorld('api', {
     getApiKey: ()            => ipcRenderer.invoke('settings:getApiKey'),
   },
 
-  pomodoro: {
-    log:   (session) => ipcRenderer.invoke('pomodoro:log', session),
-    stats: ()        => ipcRenderer.invoke('pomodoro:stats'),
-  },
-
   flashcards: {
     get: (paperId) => ipcRenderer.invoke('flashcards:get', paperId),
   },
@@ -71,8 +66,18 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   ollama: {
-    testConnection: () => ipcRenderer.invoke('ollama:testConnection'),
-    listModels:     () => ipcRenderer.invoke('ollama:listModels'),
+    testConnection:  () =>      ipcRenderer.invoke('ollama:testConnection'),
+    listModels:      () =>      ipcRenderer.invoke('ollama:listModels'),
+    status:          () =>      ipcRenderer.invoke('ollama:status'),
+    startServer:     () =>      ipcRenderer.invoke('ollama:startServer'),
+    stopServer:      () =>      ipcRenderer.invoke('ollama:stopServer'),
+    listModelsFull:  () =>      ipcRenderer.invoke('ollama:listModelsFull'),
+    listRunning:     () =>      ipcRenderer.invoke('ollama:listRunning'),
+    showModel:       (name) =>  ipcRenderer.invoke('ollama:showModel', name),
+    deleteModel:     (name) =>  ipcRenderer.invoke('ollama:deleteModel', name),
+    pullModel:       (name) =>  ipcRenderer.invoke('ollama:pullModel', name),
+    onPullProgress:  (cb) =>    ipcRenderer.on('ollama:pullProgress', (_, data) => cb(data)),
+    offPullProgress: () =>      ipcRenderer.removeAllListeners('ollama:pullProgress'),
   },
 
   dialog: {

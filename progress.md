@@ -3,8 +3,8 @@
 ---
 
 ## Current Status
-**Phase:** Complete ✅
-**Last updated:** 2026-03-15
+**Phase:** Planning Phase 11 + 12
+**Last updated:** 2026-04-18
 
 ---
 
@@ -163,6 +163,9 @@
 | Phase 9 — Installer | ✅ Complete | DMG arm64+x64 verified |
 | Phase 10 — Ollama provider | ✅ Complete | aiService.js, Settings UI, IPC handlers |
 | Issues #1–#6 | ✅ Fixed | toggle overflow, macOS titlebar, gear dupe, export, errors, tags |
+| Issues #7–#11 | ✅ Fixed | Generated content tabs, Pomodoro optional, Custom AI skills, Generate dropdown, Tab download icons |
+| Phase 11 — PDF/Text toggle (pdf-parse) | ✅ Complete | ExtractedTextPane, viewMode toggle in ReaderPage |
+| Phase 12 — Ollama Management Panel | ✅ Complete | OllamaSection, start/stop, models table, pull, delete |
 
 ---
 

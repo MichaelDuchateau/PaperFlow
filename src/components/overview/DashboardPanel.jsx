@@ -38,14 +38,12 @@ export default function DashboardPanel({
   papers = [],
   tags   = [],
   settings = {},
-  pomodoroStats = { today: 0, total: 0 },
   toThinkItems  = [],
 }) {
   const navigate = useNavigate();
 
   // ── Derived data ────────────────────────────────────────────────
-  const dailyPomGoal  = settings.daily_pomodoro_goal  ?? 4;
-  const weeklyPaperGoal = settings.weekly_paper_goal  ?? 3;
+  const weeklyPaperGoal = settings.weekly_paper_goal ?? 3;
 
   // Papers read this week (status === 'done', added within last 7 days)
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -78,18 +76,6 @@ export default function DashboardPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5">
-        {/* Pomodoro progress */}
-        <section>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Today</p>
-          <ProgressBar
-            label="Pomodoros"
-            value={pomodoroStats.today}
-            max={dailyPomGoal}
-            color="#f59e0b"
-            sublabel={pomodoroStats.today >= dailyPomGoal ? '🎉 Goal reached!' : undefined}
-          />
-        </section>
-
         {/* Papers progress */}
         <section>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">This Week</p>

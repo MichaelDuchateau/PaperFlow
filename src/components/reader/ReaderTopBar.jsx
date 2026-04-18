@@ -61,7 +61,7 @@ function TagPicker({ paperTagIds = [], allTags = [], onChange }) {
  * - Pomodoro widget stub (Phase 4 will animate it)
  * - Settings gear
  */
-export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, allTags = [], onTagsChange }) {
+export default function ReaderTopBar({ paper, onTitleChange, allTags = [], onTagsChange }) {
   const navigate   = useNavigate();
   const [editing,  setEditing]  = useState(false);
   const [draft,    setDraft]    = useState('');
@@ -128,19 +128,6 @@ export default function ReaderTopBar({ paper, onTitleChange, pomodoroWidget, all
           />
         </div>
       )}
-
-      {/* Pomodoro widget (Phase 4 replaces this stub) */}
-      <div className="no-drag flex-shrink-0">
-        {pomodoroWidget ?? (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-800 border border-gray-700 text-xs text-gray-500">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 7v5l3 3" />
-            </svg>
-            25:00
-          </div>
-        )}
-      </div>
 
       {/* Settings gear */}
       <button

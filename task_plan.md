@@ -169,6 +169,83 @@ changes needed there. All renderer code is unaffected.
 
 ---
 
+---
+
+## Phase 11 — Reader PDF / Text Toggle (pdf-parse)
+
+### Goal
+Add a **PDF | Text** view toggle in the Reader left panel. The "Text" view renders the
+existing `raw_text` column (extracted by `pdf-parse` on paper add). No new extraction or
+API calls — `raw_text` is already in every paper row. Chandra OCR deferred to a later phase.
+
+### Architecture Decision
+`raw_text` is already loaded in `papers:getById`. No new IPC needed for read — just pass
+`paper.raw_text` down from `ReaderPage`. Toggle state is local React state in `ReaderPage`.
+
+### Tasks
+- [ ] 11.1 Add `PDF | Text` pill toggle to `ReaderTopBar.jsx`; accept `viewMode` + `onViewModeChange` props
+- [ ] 11.2 In `ReaderPage.jsx`: add `const [viewMode, setViewMode] = useState('pdf')`; pass to `ReaderTopBar`
+- [ ] 11.3 When `viewMode === 'text'`, render new `ExtractedTextPane` instead of `PDFViewer` in left panel
+- [ ] 11.4 Create `src/components/reader/ExtractedTextPane.jsx`:
+  - Receives `rawText` string prop
+  - If empty: show "No text extracted for this PDF." placeholder
+  - Otherwise: render scrollable pre-formatted text (whitespace-pre-wrap, selectable)
+  - Source badge: "pdf-parse" in gray — Chandra upgrade path reserved
+
+---
+
+## Phase 12 — Ollama Management Panel
+
+### Goal
+Give users full visibility and control of the local Ollama service from within PaperFlow:
+start/stop the server, see which models are installed and running in VRAM, pull new models
+with a live progress bar, inspect and delete models. Mirrors the `ollama-ui` reference app.
+
+### Architecture Decision
+All Ollama REST calls use Node's built-in `http` module (same as existing `ollama:testConnection`).
+Server start/stop: spawn `ollama serve` as a child_process tracked in a `let ollamaProcess` global.
+Pull progress streaming: `main.js` sends IPC events via `event.sender.send('ollama:pullProgress', chunk)`
+while a handle resolves only on completion/error.
+
+### New IPC Handlers
+| Channel | Description |
+|---|---|
+| `ollama:status` | `→ { running: bool, version?: string }` |
+| `ollama:startServer` | spawn `ollama serve`, return `{ ok }` |
+| `ollama:stopServer` | kill tracked process, return `{ ok }` |
+| `ollama:listRunning` | GET /api/ps → `[{ name, size, size_vram }]` |
+| `ollama:showModel` | `name → { modelfile, parameters, template }` |
+| `ollama:deleteModel` | `name → { ok }` |
+| `ollama:pullModel` | `name →` stream progress via `ollama:pullProgress` event, resolves `{ ok }` |
+
+(Note: `ollama:listModels` and `ollama:testConnection` already exist — keep as-is)
+
+### Tasks
+
+#### A — Main process
+- [ ] 12.1 Add `let ollamaProcess = null` global in `main.js`
+- [ ] 12.2 Add `ollama:status` handler — GET `<ollamaUrl>/api/version` → `{ running, version }`; on ECONNREFUSED return `{ running: false }`
+- [ ] 12.3 Add `ollama:startServer` handler — `spawn('ollama', ['serve'], { detached: false })`; store in `ollamaProcess`; wait 1.5s then ping `/api/version` to confirm; return `{ ok }`
+- [ ] 12.4 Add `ollama:stopServer` handler — `ollamaProcess?.kill()`; set `ollamaProcess = null`; return `{ ok }`
+- [ ] 12.5 Add `ollama:listRunning` handler — GET `<ollamaUrl>/api/ps` → return models array
+- [ ] 12.6 Add `ollama:showModel` handler — POST `<ollamaUrl>/api/show` with `{ model: name }`
+- [ ] 12.7 Add `ollama:deleteModel` handler — DELETE `<ollamaUrl>/api/delete` with `{ model: name }`
+- [ ] 12.8 Add `ollama:pullModel` handler — streaming POST `<ollamaUrl>/api/pull`; for each JSON line call `event.sender.send('ollama:pullProgress', chunk)`; resolve `{ ok }` on completion
+- [ ] 12.9 Expose all new channels + `ollama:pullProgress` event listener in `preload.js`
+
+#### B — Settings UI
+- [ ] 12.10 Add `{ id: 'ollama', label: 'Ollama', icon: '...' }` nav item to `NAV` in `SettingsPage.jsx`
+- [ ] 12.11 Create `src/components/settings/OllamaSection.jsx`:
+  - **Server status row**: colored dot (green/red) + version string + "Start" / "Stop" buttons
+    - On mount: call `ollama.status()`; auto-refresh every 5s while panel is visible
+  - **Models in memory** (from `ollama:listRunning`): metric cards showing name, size GB, VRAM GB; shown only when Ollama is running
+  - **Installed models table** (from `ollama:listModels`): columns Name | Size | Family | Parameters | Quantization | Modified; with per-row "Inspect" + "Delete" (confirm checkbox) actions
+  - **Inspect drawer**: shows modelfile, parameters, template in `<pre>` blocks
+  - **Pull model form**: text input + "Pull" button; live progress bar listening to `ollama:pullProgress` events; success/error toast
+- [ ] 12.12 Import and wire `OllamaSection` in `SettingsPage.jsx` alongside existing sections
+
+---
+
 ## Critical Rules
 1. ALL file I/O in main process only — never import `fs` or `better-sqlite3` in renderer
 2. API key stored via `safeStorage.encryptString()` — never in plain JSON
